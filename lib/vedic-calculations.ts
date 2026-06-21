@@ -27,7 +27,7 @@ function julianCenturies(jd: number) {
   return (jd - 2451545.0) / 36525.0;
 }
 
-// Lahiri ayanamsa (Chitrapaksha) — standard for Indian astrology
+// Lahiri ayanamsa (Chitrapaksha)
 function getLahiriAyanamsa(T: number): number {
   return 23.85472 + T * 1.3958 / 100;
 }
@@ -46,66 +46,114 @@ function sunLongitude(T: number): number {
   return norm360(theta - 0.00569 - 0.00478 * Math.sin(toRad(omega)));
 }
 
-function moonLongitude(T: number): number {
-  const Lp = norm360(218.3165 + 481267.8813 * T);
-  const D = toRad(norm360(297.85036 + 445267.11148 * T - 0.0019142 * T * T + T * T * T / 189474));
-  const M = toRad(norm360(357.52772 + 35999.05034 * T - 0.0001603 * T * T));
-  const Mp = toRad(norm360(134.96298 + 477198.867398 * T + 0.0086972 * T * T));
-  const F = toRad(norm360(93.27191 + 483202.017538 * T - 0.0036825 * T * T));
-
-  const dL =
-    6288774 * Math.sin(Mp) +
-    1274027 * Math.sin(2 * D - Mp) +
-    658314 * Math.sin(2 * D) +
-    213618 * Math.sin(2 * Mp) -
-    185116 * Math.sin(M) -
-    114332 * Math.sin(2 * F) +
-    58793 * Math.sin(2 * D - 2 * Mp) +
-    57066 * Math.sin(2 * D - M - Mp) +
-    53322 * Math.sin(2 * D + Mp) +
-    45758 * Math.sin(2 * D - M) -
-    40923 * Math.sin(M - Mp) -
-    34720 * Math.sin(D) -
-    30383 * Math.sin(M + Mp) +
-    15327 * Math.sin(2 * D - 2 * F) -
-    12528 * Math.sin(Mp + 2 * F) +
-    10980 * Math.sin(Mp - 2 * F) +
-    10675 * Math.sin(4 * D - Mp) +
-    10034 * Math.sin(3 * Mp) +
-    8548 * Math.sin(4 * D - 2 * Mp) -
-    7888 * Math.sin(2 * D + M - Mp) -
-    6766 * Math.sin(2 * D + M) -
-    5163 * Math.sin(D - Mp);
-
-  return norm360(Lp + dL / 1e6);
+// Earth's heliocentric longitude and radius vector (AU)
+function earthHeliocentric(T: number): [number, number] {
+  const sunLon = sunLongitude(T);
+  const earthLon = norm360(sunLon + 180);
+  const M = norm360(357.52911 + 35999.05029 * T - 0.0001537 * T * T);
+  const e = 0.016708634 - 0.000042037 * T;
+  const Mr = toRad(M);
+  const C =
+    (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Mr) +
+    (0.019993 - 0.000101 * T) * Math.sin(2 * Mr) +
+    0.000289 * Math.sin(3 * Mr);
+  const nu = norm360(M + C);
+  const r = 1.000001018 * (1 - e * e) / (1 + e * Math.cos(toRad(nu)));
+  return [earthLon, r];
 }
 
-function moonNode(T: number): number {
-  return norm360(125.04452 - 1934.136261 * T + 0.0020708 * T * T + T * T * T / 450000);
-}
-
-function planetLongitude(planet: string, T: number): number {
+// Returns [heliocentric tropical longitude, heliocentric radius AU]
+function planetHeliocentric(planet: string, T: number): [number, number] {
   const d = T * 36525;
-  const data: Record<string, [number, number, number, number]> = {
-    // [mean longitude epoch, dL/day, eccentricity, argument of perihelion]
-    mercury: [252.250906, 4.092337, 0.205630, 77.45645],
-    venus: [181.979801, 1.602136, 0.006773, 131.56370],
-    mars: [355.453094, 0.524039, 0.093412, 336.04084],
-    jupiter: [34.396441, 0.083086, 0.048393, 14.75385],
-    saturn: [50.077444, 0.033459, 0.054151, 92.43194],
+  // [L0, dL/day, e, perihelion longitude, semi-major axis AU]
+  const data: Record<string, [number, number, number, number, number]> = {
+    mercury: [252.250906, 4.092337,  0.205630, 77.45645,  0.387098],
+    venus:   [181.979801, 1.602136,  0.006773, 131.56370, 0.723332],
+    mars:    [355.453094, 0.524039,  0.093412, 336.04084, 1.523679],
+    jupiter: [34.396441,  0.083086,  0.048393, 14.75385,  5.204267],
+    saturn:  [50.077444,  0.033459,  0.054151, 92.43194,  9.582017],
   };
   const el = data[planet];
-  if (!el) return 0;
-  const L = norm360(el[0] + el[1] * d);
-  const M = norm360(L - el[3]);
-  const e = el[2];
+  if (!el) return [0, 1];
+  const [L0, dLday, e, omega, a] = el;
+  const L = norm360(L0 + dLday * d);
+  const M = norm360(L - omega);
   const Mr = toRad(M);
   const C = toDeg(
     (2 * e - (e * e * e) / 4) * Math.sin(Mr) +
     (5 * e * e / 4) * Math.sin(2 * Mr) +
     (13 * e * e * e / 12) * Math.sin(3 * Mr)
   );
-  return norm360(L + C);
+  const nu = norm360(M + C);
+  const r = a * (1 - e * e) / (1 + e * Math.cos(toRad(nu)));
+  return [norm360(L + C), r];
+}
+
+// Convert heliocentric (lon, r) to geocentric longitude
+function helioToGeo(helioLon: number, helioR: number, earthLon: number, earthR: number): number {
+  const Xp = helioR * Math.cos(toRad(helioLon));
+  const Yp = helioR * Math.sin(toRad(helioLon));
+  const Xe = earthR * Math.cos(toRad(earthLon));
+  const Ye = earthR * Math.sin(toRad(earthLon));
+  return norm360(toDeg(Math.atan2(Yp - Ye, Xp - Xe)));
+}
+
+// Moon geocentric longitude ? Meeus Ch.47, 40 terms
+function moonLongitude(T: number): number {
+  const Lp = norm360(218.3164477 + 481267.88123421 * T - 0.0015786 * T * T + T * T * T / 538841);
+  const D  = toRad(norm360(297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + T * T * T / 545868));
+  const M  = toRad(norm360(357.5291092 + 35999.0502909 * T - 0.0001536 * T * T));
+  const Mp = toRad(norm360(134.9633964 + 477198.8675055 * T + 0.0087414 * T * T + T * T * T / 69699));
+  const F  = toRad(norm360(93.2720950  + 483202.0175233 * T - 0.0036539 * T * T - T * T * T / 3526000));
+
+  const dL =
+    6288774 * Math.sin(Mp) +
+    1274027 * Math.sin(2*D - Mp) +
+    658314  * Math.sin(2*D) +
+    213618  * Math.sin(2*Mp) -
+    185116  * Math.sin(M) -
+    114332  * Math.sin(2*F) +
+    58793   * Math.sin(2*D - 2*Mp) +
+    57066   * Math.sin(2*D - M - Mp) +
+    53322   * Math.sin(2*D + Mp) +
+    45758   * Math.sin(2*D - M) -
+    40923   * Math.sin(M - Mp) -
+    34720   * Math.sin(D) -
+    30383   * Math.sin(M + Mp) +
+    15327   * Math.sin(2*D - 2*F) -
+    12528   * Math.sin(Mp + 2*F) +
+    10980   * Math.sin(Mp - 2*F) +
+    10675   * Math.sin(4*D - Mp) +
+    10034   * Math.sin(3*Mp) +
+    8548    * Math.sin(4*D - 2*Mp) -
+    7888    * Math.sin(2*D + M - Mp) -
+    6766    * Math.sin(2*D + M) -
+    5163    * Math.sin(D - Mp) +
+    4987    * Math.sin(D + M) +
+    4036    * Math.sin(2*D - M + Mp) +
+    3994    * Math.sin(2*D + 2*Mp) +
+    3861    * Math.sin(4*D) +
+    3665    * Math.sin(2*D - 3*Mp) -
+    2689    * Math.sin(M - 2*Mp) -
+    2602    * Math.sin(2*D - Mp + 2*F) +
+    2390    * Math.sin(2*D - M - 2*Mp) -
+    2348    * Math.sin(D + Mp) +
+    2236    * Math.sin(2*D - 2*M) -
+    2120    * Math.sin(M + 2*Mp) -
+    2069    * Math.sin(2*M) +
+    2048    * Math.sin(2*D - 2*M - Mp) -
+    1773    * Math.sin(2*D + Mp - 2*F) -
+    1595    * Math.sin(2*D + 2*F) +
+    1215    * Math.sin(4*D - M - Mp) -
+    1110    * Math.sin(2*Mp + 2*F) -
+    892     * Math.sin(3*D - Mp) -
+    810     * Math.sin(2*D + M + Mp);
+
+  return norm360(Lp + dL / 1e6);
+}
+
+function moonNode(T: number): number {
+  return norm360(125.04452 - 1934.136261 * T + 0.0020708 * T * T + T * T * T / 450000);
 }
 
 function calculateAscendant(jd: number, latitude: number, longitude: number): number {
@@ -116,13 +164,10 @@ function calculateAscendant(jd: number, latitude: number, longitude: number): nu
   const LMST = norm360(GMST + longitude);
   const ramcR = toRad(LMST);
   const latR = toRad(latitude);
-  const ascLon = norm360(
-    toDeg(Math.atan2(
-      Math.cos(ramcR),
-      -(Math.sin(ramcR) * Math.cos(epsR) + Math.tan(latR) * Math.sin(epsR))
-    ))
-  );
-  return ascLon;
+  return norm360(toDeg(Math.atan2(
+    Math.cos(ramcR),
+    -(Math.sin(ramcR) * Math.cos(epsR) + Math.tan(latR) * Math.sin(epsR))
+  )));
 }
 
 function getMidheaven(jd: number, longitude: number): number {
@@ -173,6 +218,7 @@ export interface ChartData {
   planets: PlanetData[];
   ayanamsa: number;
   dashas: DashaData[];
+  debug?: Record<string, number>;
 }
 
 export interface DashaData {
@@ -192,29 +238,31 @@ export interface SubDashaData {
 }
 
 function isRetrograde(planet: string, T: number): boolean {
-  const d1 = planetLongitude(planet, T);
-  const d2 = planetLongitude(planet, T + 1 / 36525);
-  let diff = d2 - d1;
+  const [l1] = planetHeliocentric(planet, T);
+  const [l2] = planetHeliocentric(planet, T + 1 / 36525);
+  const [e1, r1] = earthHeliocentric(T);
+  const [e2, r2] = earthHeliocentric(T + 1 / 36525);
+  const g1 = helioToGeo(l1, planetHeliocentric(planet, T)[1], e1, r1);
+  const g2 = helioToGeo(l2, planetHeliocentric(planet, T + 1 / 36525)[1], e2, r2);
+  let diff = g2 - g1;
   if (diff > 180) diff -= 360;
   if (diff < -180) diff += 360;
   return diff < 0;
 }
 
 function degreesToDMS(deg: number): string {
-  const sign = deg < 0 ? '-' : '';
   const abs = Math.abs(deg);
   const d = Math.floor(abs) % 30;
   const mRaw = (abs % 1) * 60;
   const m = Math.floor(mRaw);
   const s = Math.floor((mRaw % 1) * 60);
-  return `${sign}${d}°${m}'${s}"`;
+  return `${d}°${m}'${s}"`;
 }
 
 export function calculateDashas(moonLon: number, birthDate: Date): DashaData[] {
   const nakshatraIndex = Math.floor(moonLon / (360 / 27));
   const nakshatra = NAKSHATRAS[nakshatraIndex];
   const lordIndex = VIMSHOTTARI_SEQUENCE.findIndex(v => v.lord === nakshatra.lord);
-
   const nakshatraStart = (360 / 27) * nakshatraIndex;
   const fractionElapsed = (moonLon - nakshatraStart) / (360 / 27);
   const remainingFraction = 1 - fractionElapsed;
@@ -231,7 +279,6 @@ export function calculateDashas(moonLon: number, birthDate: Date): DashaData[] {
     const endDate = new Date(currentDate.getTime() + durationMs);
     const isCurrent = now >= currentDate && now < endDate;
 
-    // Calculate sub-dashas (antardashas)
     const subDashas: SubDashaData[] = [];
     let subStart = new Date(currentDate);
     for (let j = 0; j < 9; j++) {
@@ -273,15 +320,18 @@ export function calculateChart(
   const T = julianCenturies(jd);
   const ayanamsa = getLahiriAyanamsa(T);
 
+  const [earthLon, earthR] = earthHeliocentric(T);
+
+  // Tropical geocentric longitudes
   const tropicalPlanets: Record<string, number> = {
     sun: sunLongitude(T),
     moon: moonLongitude(T),
-    mars: planetLongitude('mars', T),
-    mercury: planetLongitude('mercury', T),
-    jupiter: planetLongitude('jupiter', T),
-    venus: planetLongitude('venus', T),
-    saturn: planetLongitude('saturn', T),
   };
+
+  for (const p of ['mercury', 'venus', 'mars', 'jupiter', 'saturn']) {
+    const [hLon, hR] = planetHeliocentric(p, T);
+    tropicalPlanets[p] = helioToGeo(hLon, hR, earthLon, earthR);
+  }
 
   const rahuTropical = moonNode(T);
   tropicalPlanets.rahu = rahuTropical;
@@ -327,16 +377,16 @@ export function calculateChart(
     };
   });
 
+  // Debug: raw sidereal longitudes before sign conversion
+  const debug: Record<string, number> = {};
+  for (const [id, tropLon] of Object.entries(tropicalPlanets)) {
+    debug[id] = parseFloat(norm360(tropLon - ayanamsa).toFixed(4));
+  }
+  debug['lagna'] = parseFloat(lagnaLon.toFixed(4));
+
   const moonPlanet = planets.find(p => p.id === 'moon')!;
   const birthDate = new Date(year, month - 1, day, hour, minute);
   const dashas = calculateDashas(moonPlanet.longitude, birthDate);
 
-  return {
-    lagna: lagnaLon,
-    lagnaSign: lagnaSignIndex,
-    midheaven: mcLon,
-    planets,
-    ayanamsa,
-    dashas,
-  };
+  return { lagna: lagnaLon, lagnaSign: lagnaSignIndex, midheaven: mcLon, planets, ayanamsa, dashas, debug };
 }
