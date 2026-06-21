@@ -273,18 +273,21 @@ def calculate_chart(
     # Convert to sidereal
     sidereal = {k: (v - ayanamsa) % 360 for k, v in tropical.items()}
 
-    # Ascendant (Whole Sign) — sidereal via houses_ex + FLG_SIDEREAL
-    # cusps[1] is the sidereal start of Whole Sign H1 (= tropical H1 cusp - ayanamsa).
-    # Using cusps[1] for lagna_sign gives the correct Vedic Whole Sign lagna even when
-    # the sidereal ASC falls right at a sign boundary (e.g. Cancer/Leo at 120°).
-    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'W', swe.FLG_SIDEREAL)
-    asc_sidereal = ascmc[0]          # true sidereal Ascendant degree (used for D-chart lagnas)
-    lagna_sign   = _sign(cusps[1])   # Whole Sign H1 sign = sign of the sidereal H1 cusp
+    # Ascendant — traditional Vedic Whole Sign method
+    # D1 lagna: sidereal of tropical Whole Sign H1 cusp
+    #   tropical_H1_cusp = floor(tropical_ASC/30)*30  (= cusps_t[0] for Whole Sign)
+    #   lagna_sign = sign(tropical_H1_cusp − ayanamsa)
+    # Divisional lagnas: apply get_div_sign to the TROPICAL ASC
+    #   so that D9 = get_div_sign(tropical_ASC, 9), etc.
+    cusps_t, ascmc_t = swe.houses(jd, lat, lon, b'W')
+    tropical_asc = ascmc_t[0]
+    asc_sidereal = (tropical_asc - ayanamsa) % 360   # physical sidereal ASC (for display/dasha)
+    lagna_sign   = _sign(cusps_t[0] - ayanamsa)      # Cancer when tropical H1 cusp converts to sidereal Cancer
 
-    # Divisional lagna signs (ASC in each divisional chart)
+    # Divisional lagna signs — use tropical ASC for all divisional formulas
     div_lagnas = {}
     for d in divisions:
-        ds = get_div_sign(asc_sidereal, d)
+        ds = lagna_sign if d == 1 else get_div_sign(tropical_asc, d)
         div_lagnas[f"D{d}"] = {"signIndex": ds, "sign": SIGNS[ds]}
 
     # Build planet list
@@ -380,16 +383,15 @@ def debug_chart(year, month, day, hour, minute, lat, lon, utc_offset, node_type=
     sidereal["ketu"] = round((sidereal["rahu"] + 180) % 360, 6)
 
     cusps_t, ascmc_t = swe.houses(jd, lat, lon, b'W')
-    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'W', swe.FLG_SIDEREAL)
-    tropical["ascendant"] = round(ascmc_t[0], 6)
-    sidereal["ascendant"] = round(ascmc[0], 6)
+    trop_asc = ascmc_t[0]
+    tropical["ascendant"] = round(trop_asc, 6)
+    sidereal["ascendant"] = round((trop_asc - ayanamsa) % 360, 6)
 
     utc_dt = datetime(year, month, day, hour, minute) - timedelta(hours=utc_offset)
-    asc_sid = sidereal["ascendant"]
 
-    div_lagnas = {f"D{d}": SIGNS[get_div_sign(asc_sid, d)] for d in SUPPORTED_DIVISIONS}
+    div_lagnas = {f"D{d}": SIGNS[get_div_sign(trop_asc, d)] for d in SUPPORTED_DIVISIONS}
     sign_mapping = {k: SIGNS[_sign(v)] for k, v in sidereal.items()}
-    lagna_sign = _sign(cusps[1])   # Whole Sign: use H1 cusp, not raw sidereal ASC
+    lagna_sign = _sign(cusps_t[0] - ayanamsa)   # traditional Vedic: sidereal of tropical H1 cusp
     house_mapping = {k: (((_sign(v)) - lagna_sign) % 12) + 1
                      for k, v in sidereal.items() if k != "ascendant"}
 
