@@ -197,6 +197,12 @@ export function getHouseNumber(planetSign: number, lagnaSign: number): number {
   return ((planetSign - lagnaSign + 12) % 12) + 1;
 }
 
+export interface DivisionalPlacement {
+  signIndex: number;
+  sign: string;
+  house: number;
+}
+
 export interface PlanetData {
   id: string;
   name: string;
@@ -204,21 +210,28 @@ export interface PlanetData {
   signIndex: number;
   sign: string;
   degree: string;
+  degreeDecimal?: number;
   house: number;
   nakshatra: string;
   nakshatraLord: string;
   pada: number;
   isRetrograde: boolean;
+  speed?: number;
+  divisional?: Record<string, DivisionalPlacement>;
 }
 
 export interface ChartData {
   lagna: number;
   lagnaSign: number;
+  lagnaSignName?: string;
   midheaven: number;
-  planets: PlanetData[];
   ayanamsa: number;
+  nodeType?: string;
+  divisionalLagnas?: Record<string, { signIndex: number; sign: string }>;
+  planets: PlanetData[];
   dashas: DashaData[];
   debug?: Record<string, number>;
+  _meta?: Record<string, unknown>;
 }
 
 export interface DashaData {

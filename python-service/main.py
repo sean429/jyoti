@@ -1,18 +1,14 @@
 """
-Jyoti Vedic Astrology ? Python Calculation Service
-Deploy on Render: https://render.com
-  Build: pip install -r requirements.txt
-  Start: uvicorn main:app --host 0.0.0.0 --port $PORT
-
-Set PYTHON_SERVICE_URL in Vercel to your Render service URL.
+Jyoti Vedic Astrology - Python Calculation Service
+Start: uvicorn main:app --host 0.0.0.0 --port $PORT
 """
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Literal
-from vedic import calculate_chart, debug_chart
+from typing import Literal, Optional, List
+from vedic import calculate_chart, debug_chart, SUPPORTED_DIVISIONS
 
-app = FastAPI(title="Jyoti Vedic API", version="1.0.0")
+app = FastAPI(title="Jyoti Vedic API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -33,12 +29,11 @@ class ChartRequest(BaseModel):
     name: str = ""
     place: str = ""
     node_type: Literal["mean", "true"] = "mean"
-    include_d9: bool = True
-    include_d10: bool = False
+    divisions: Optional[List[int]] = None   # None = all supported divisions
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "supported_divisions": SUPPORTED_DIVISIONS}
 
 @app.post("/calculate")
 def calculate(req: ChartRequest):
@@ -49,8 +44,7 @@ def calculate(req: ChartRequest):
             req.latitude, req.longitude,
             req.utcOffset,
             node_type=req.node_type,
-            include_d9=req.include_d9,
-            include_d10=req.include_d10,
+            divisions=req.divisions,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

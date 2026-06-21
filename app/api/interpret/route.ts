@@ -1,17 +1,17 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: NextRequest) {
   try {
-    const { chart, birthInfo, lang = 'en' } = await req.json();
+    const { chart, birthInfo, lang = 'en', theme } = await req.json();
 
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Gemini API key not configured. Add GEMINI_API_KEY to .env.local' }, { status: 500 });
     }
 
-    const lagnaNames = [
+    const SIGN_NAMES = [
       'Mesha (Aries)', 'Vrishabha (Taurus)', 'Mithuna (Gemini)', 'Karka (Cancer)',
       'Simha (Leo)', 'Kanya (Virgo)', 'Tula (Libra)', 'Vrishchika (Scorpio)',
       'Dhanu (Sagittarius)', 'Makara (Capricorn)', 'Kumbha (Aquarius)', 'Meena (Pisces)',
@@ -20,62 +20,156 @@ export async function POST(req: NextRequest) {
     const currentDasha = chart.dashas?.find((d: { isCurrent: boolean }) => d.isCurrent);
     const currentSubDasha = currentDasha?.subDashas?.find((s: { isCurrent: boolean }) => s.isCurrent);
 
+    // D1 planet list
     const planetList = chart.planets
       ?.map((p: { name: string; sign: string; house: number; nakshatra: string; isRetrograde: boolean }) =>
         `${p.name}: ${p.sign} (House ${p.house}, Nakshatra: ${p.nakshatra}${p.isRetrograde ? ', Retrograde' : ''})`
       ).join('\n');
 
+    // Divisional chart planet list (when theme provided)
+    let divPlanetList = '';
+    if (theme?.d2) {
+      const dKey = `D${theme.d2}`;
+      const divLagna = (chart as any).divisionalLagnas?.[dKey];
+      divPlanetList = chart.planets
+        ?.map((p: any) => {
+          const div = p.divisional?.[dKey];
+          if (!div) return null;
+          return `${p.name}: ${div.sign} (House ${div.house})`;
+        })
+        .filter(Boolean)
+        .join('\n');
+      if (divLagna) {
+        divPlanetList = `Lagna in ${dKey}: ${divLagna.sign}\n` + divPlanetList;
+      }
+    }
+
     const isKorean = lang === 'ko';
 
-    const prompt = isKorean
-      ? `당신은 수천 년의 지식을 가진 베딕(인도) 점성술 전문가입니다. 아래 출생 차트 데이터를 바탕으로 상세하고 개인화된 베딕 운세 해석을 한국어로 제공해주세요.
+    let prompt: string;
 
-**출생 정보:**
-- 이름: ${birthInfo.name}
-- 생년월일: ${birthInfo.date}
-- 출생 시각: ${birthInfo.time}
-- 출생지: ${birthInfo.place}
+    if (isKorean) {
+      if (theme) {
+        // Theme-specific Korean prompt
+        prompt = `??? ?? ?? ??? ?? ??(??) ??? ??????.
+?? ?? ?? ???? ?? ??? ???? ?? ?? ??? ??? ??????.
 
-**차트 데이터:**
-- 라그나 (상승궁): ${lagnaNames[chart.lagnaSign]} (${chart.lagna?.toFixed(2)}°)
-- 아야남사 (라히리): ${chart.ayanamsa?.toFixed(4)}°
+**?? ??:**
+- ??: ${birthInfo.name}
+- ????: ${birthInfo.date}
+- ?? ??: ${birthInfo.time}
+- ???: ${birthInfo.place}
 
-**행성 위치:**
+**?? ??: ${theme.name}**
+${theme.desc}
+
+**?? ?? (D1 ??) ?? ??:**
+??? (???): ${SIGN_NAMES[chart.lagnaSign]} (${chart.lagna?.toFixed(2)}?)
+???? (???): ${chart.ayanamsa?.toFixed(4)}?
+
 ${planetList}
 
-**현재 다샤 (대운) 기간:**
-- 마하다샤: ${currentDasha?.lord || '미상'} (${currentDasha?.startDate ? new Date(currentDasha.startDate).getFullYear() : ''}년 ~ ${currentDasha?.endDate ? new Date(currentDasha.endDate).getFullYear() : ''}년)
-- 안타르다샤: ${currentSubDasha?.lord || '미상'}
+**D${theme.d2} ?? ?? ?? ??:**
+${divPlanetList}
 
-다음 항목을 포함하여 풍부하고 개인화된 한국어 운세 해석을 제공해주세요:
+**?? ?? ??:**
+- ????: ${currentDasha?.lord || '??'} (${currentDasha?.startDate ? new Date(currentDasha.startDate).getFullYear() : ''}? ~ ${currentDasha?.endDate ? new Date(currentDasha.endDate).getFullYear() : ''}?)
+- ?????: ${currentSubDasha?.lord || '??'}
 
-1. **성격과 외모** (라그나와 라그나 주인 행성 기준)
-2. **마음과 감정** (달의 별자리와 나크샤트라)
-3. **영혼의 목적** (태양의 위치와 하우스)
-4. **핵심 인생 테마** (주요 행성 배치)
-5. **현재 대운 분석** (마하다샤와 안타르다샤의 영향)
-6. **강점과 타고난 재능**
-7. **도전과 성장 과제**
-8. **현재 기간을 위한 지혜**
+?? ??? ???? '${theme.name}' ??? ??? ?? ??? ??????:
 
-산스크리트 용어와 한국어 설명을 함께 사용하고, 따뜻하고 통찰력 있는 어조로 개인화된 해석을 작성해주세요.`
-      : `You are a highly knowledgeable Vedic astrologer with deep wisdom. Provide a detailed, insightful, personalized Vedic astrology reading based on the following birth chart.
+1. **${theme.name}? ?? ???** (D1? D${theme.d2}? ?? ??)
+2. **D1 ?? ???? ??? ??** (? ??? ??? ?? ???)
+3. **D${theme.d2} ?? ??? ?? ??** (???? ???? ???)
+4. **? ??? ??? ???? ??? ??**
+5. **?? ?? ???? ???**
+6. **???? ??? ?? ??**
+
+????? ??? ??? ??? ?? ????, ???? ??? ?? ??? ???? ??? ??????.`;
+      } else {
+        // General Korean prompt
+        prompt = `??? ?? ?? ??? ?? ??(??) ??? ??????. ?? ?? ?? ???? ???? ???? ???? ?? ?? ??? ???? ??????.
+
+**?? ??:**
+- ??: ${birthInfo.name}
+- ????: ${birthInfo.date}
+- ?? ??: ${birthInfo.time}
+- ???: ${birthInfo.place}
+
+**?? ???:**
+- ??? (???): ${SIGN_NAMES[chart.lagnaSign]} (${chart.lagna?.toFixed(2)}?)
+- ???? (???): ${chart.ayanamsa?.toFixed(4)}?
+
+**?? ??:**
+${planetList}
+
+**?? ?? (??) ??:**
+- ????: ${currentDasha?.lord || '??'} (${currentDasha?.startDate ? new Date(currentDasha.startDate).getFullYear() : ''}? ~ ${currentDasha?.endDate ? new Date(currentDasha.endDate).getFullYear() : ''}?)
+- ?????: ${currentSubDasha?.lord || '??'}
+
+?? ??? ???? ???? ???? ??? ?? ??? ??????:
+
+1. **??? ??** (???? ??? ?? ?? ??)
+2. **??? ??** (?? ???? ?????)
+3. **??? ??** (??? ??? ???)
+4. **?? ?? ??** (?? ?? ??)
+5. **?? ?? ??** (????? ?????? ??)
+6. **??? ??? ??**
+7. **??? ?? ??**
+8. **?? ??? ?? ??**
+
+????? ??? ??? ??? ?? ????, ???? ??? ?? ??? ???? ??? ??????.`;
+      }
+    } else {
+      if (theme) {
+        // Theme-specific English prompt
+        prompt = `You are a highly knowledgeable Vedic astrologer. Provide a focused, insightful reading based on the theme below.
 
 **Birth Information:**
 - Name: ${birthInfo.name}
-- Date: ${birthInfo.date}
-- Time: ${birthInfo.time}
-- Place: ${birthInfo.place}
+- Date: ${birthInfo.date} | Time: ${birthInfo.time} | Place: ${birthInfo.place}
+
+**Theme: ${theme.name}**
+${theme.desc}
+
+**D1 Rashi Chart:**
+Lagna: ${SIGN_NAMES[chart.lagnaSign]} at ${chart.lagna?.toFixed(2)}?
+Ayanamsa (Lahiri): ${chart.ayanamsa?.toFixed(4)}?
+${planetList}
+
+**D${theme.d2} Divisional Chart:**
+${divPlanetList}
+
+**Current Dasha:**
+Mahadasha: ${currentDasha?.lord || 'Unknown'} (${currentDasha?.startDate ? new Date(currentDasha.startDate).getFullYear() : ''}-${currentDasha?.endDate ? new Date(currentDasha.endDate).getFullYear() : ''})
+Antardasha: ${currentSubDasha?.lord || 'Unknown'}
+
+Provide a deep interpretation focused on '${theme.name}':
+1. **Core Energy of this Theme** (synthesis of D1 + D${theme.d2})
+2. **D1 Rashi Chart Patterns** (planets relevant to this life area)
+3. **D${theme.d2} Divisional Chart Insights** (deeper potentials and nuances)
+4. **Combined Chart Reading** (what the combination reveals)
+5. **Current Dasha Influence** on this theme
+6. **Practical Guidance**
+
+Use Sanskrit and English terminology. Be specific and personalized.`;
+      } else {
+        // General English prompt
+        prompt = `You are a highly knowledgeable Vedic astrologer with deep wisdom. Provide a detailed, insightful, personalized Vedic astrology reading based on the following birth chart.
+
+**Birth Information:**
+- Name: ${birthInfo.name}
+- Date: ${birthInfo.date} | Time: ${birthInfo.time} | Place: ${birthInfo.place}
 
 **Chart Data:**
-- Lagna (Ascendant): ${lagnaNames[chart.lagnaSign]} at ${chart.lagna?.toFixed(2)}°
-- Ayanamsa (Lahiri): ${chart.ayanamsa?.toFixed(4)}°
+- Lagna (Ascendant): ${SIGN_NAMES[chart.lagnaSign]} at ${chart.lagna?.toFixed(2)}?
+- Ayanamsa (Lahiri): ${chart.ayanamsa?.toFixed(4)}?
 
 **Planetary Positions:**
 ${planetList}
 
 **Current Dasha Period:**
-- Mahadasha: ${currentDasha?.lord || 'Unknown'} (${currentDasha?.startDate ? new Date(currentDasha.startDate).getFullYear() : ''} - ${currentDasha?.endDate ? new Date(currentDasha.endDate).getFullYear() : ''})
+- Mahadasha: ${currentDasha?.lord || 'Unknown'} (${currentDasha?.startDate ? new Date(currentDasha.startDate).getFullYear() : ''}-${currentDasha?.endDate ? new Date(currentDasha.endDate).getFullYear() : ''})
 - Antardasha: ${currentSubDasha?.lord || 'Unknown'}
 
 Please provide a rich interpretation covering:
@@ -89,6 +183,8 @@ Please provide a rich interpretation covering:
 8. **Guidance for Now**
 
 Use Sanskrit and English terminology together. Be specific and personalized, not generic.`;
+      }
+    }
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',

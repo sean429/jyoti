@@ -1,4 +1,4 @@
-"""
+﻿"""
 Vedic astrology chart calculator ? Swiss Ephemeris (pyswisseph)
 Lahiri ayanamsa, Whole Sign houses, Moshier built-in ephemeris
 Divisional charts: D1,D2,D3,D4,D7,D9,D10,D12,D16,D20,D24,D27,D30,D40,D45,D60
