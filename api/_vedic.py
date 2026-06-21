@@ -273,9 +273,10 @@ def calculate_chart(
     # Convert to sidereal
     sidereal = {k: (v - ayanamsa) % 360 for k, v in tropical.items()}
 
-    # Ascendant (Whole Sign)
-    cusps, ascmc = swe.houses(jd, lat, lon, b'W')
-    asc_sidereal = (ascmc[0] - ayanamsa) % 360
+    # Ascendant (Whole Sign) — sidereal via houses_ex + FLG_SIDEREAL
+    # houses_ex with FLG_SIDEREAL returns ascmc[0] already in sidereal longitude
+    cusps, ascmc = swe.houses_ex(jd, swe.FLG_SIDEREAL, lat, lon, b'W')
+    asc_sidereal = ascmc[0]
     lagna_sign   = _sign(asc_sidereal)
 
     # Divisional lagna signs (ASC in each divisional chart)
@@ -331,6 +332,7 @@ def calculate_chart(
 
     debug = {k: round(v, 4) for k, v in sidereal.items()}
     debug["lagna"] = round(asc_sidereal, 4)
+    debug["lagna_tropical"] = round((asc_sidereal + ayanamsa) % 360, 4)
 
     return {
         "lagna":         round(asc_sidereal, 6),
@@ -375,9 +377,10 @@ def debug_chart(year, month, day, hour, minute, lat, lon, utc_offset, node_type=
     tropical["ketu"] = round((tropical["rahu"] + 180) % 360, 6)
     sidereal["ketu"] = round((sidereal["rahu"] + 180) % 360, 6)
 
-    cusps, ascmc = swe.houses(jd, lat, lon, b'W')
-    tropical["ascendant"] = round(ascmc[0], 6)
-    sidereal["ascendant"] = round((ascmc[0] - ayanamsa) % 360, 6)
+    cusps_t, ascmc_t = swe.houses(jd, lat, lon, b'W')
+    cusps, ascmc = swe.houses_ex(jd, swe.FLG_SIDEREAL, lat, lon, b'W')
+    tropical["ascendant"] = round(ascmc_t[0], 6)
+    sidereal["ascendant"] = round(ascmc[0], 6)
 
     utc_dt = datetime(year, month, day, hour, minute) - timedelta(hours=utc_offset)
     asc_sid = sidereal["ascendant"]
