@@ -277,7 +277,7 @@ def calculate_chart(
     # cusps[1] is the sidereal start of Whole Sign H1 (= tropical H1 cusp - ayanamsa).
     # Using cusps[1] for lagna_sign gives the correct Vedic Whole Sign lagna even when
     # the sidereal ASC falls right at a sign boundary (e.g. Cancer/Leo at 120°).
-    cusps, ascmc = swe.houses_ex(jd, swe.FLG_SIDEREAL, lat, lon, b'W')
+    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'W', swe.FLG_SIDEREAL)
     asc_sidereal = ascmc[0]          # true sidereal Ascendant degree (used for D-chart lagnas)
     lagna_sign   = _sign(cusps[1])   # Whole Sign H1 sign = sign of the sidereal H1 cusp
 
@@ -380,7 +380,7 @@ def debug_chart(year, month, day, hour, minute, lat, lon, utc_offset, node_type=
     sidereal["ketu"] = round((sidereal["rahu"] + 180) % 360, 6)
 
     cusps_t, ascmc_t = swe.houses(jd, lat, lon, b'W')
-    cusps, ascmc = swe.houses_ex(jd, swe.FLG_SIDEREAL, lat, lon, b'W')
+    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'W', swe.FLG_SIDEREAL)
     tropical["ascendant"] = round(ascmc_t[0], 6)
     sidereal["ascendant"] = round(ascmc[0], 6)
 
