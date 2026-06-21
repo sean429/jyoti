@@ -1,0 +1,97 @@
+export const SIGNS = [
+  { id: 1, name: 'Mesha', sanskrit: 'मेष', english: 'Aries', symbol: '♈', element: 'Fire', quality: 'Cardinal', ruler: 'Mars' },
+  { id: 2, name: 'Vrishabha', sanskrit: 'वृषभ', english: 'Taurus', symbol: '♉', element: 'Earth', quality: 'Fixed', ruler: 'Venus' },
+  { id: 3, name: 'Mithuna', sanskrit: 'मिथुन', english: 'Gemini', symbol: '♊', element: 'Air', quality: 'Mutable', ruler: 'Mercury' },
+  { id: 4, name: 'Karka', sanskrit: 'कर्क', english: 'Cancer', symbol: '♋', element: 'Water', quality: 'Cardinal', ruler: 'Moon' },
+  { id: 5, name: 'Simha', sanskrit: 'सिंह', english: 'Leo', symbol: '♌', element: 'Fire', quality: 'Fixed', ruler: 'Sun' },
+  { id: 6, name: 'Kanya', sanskrit: 'कन्या', english: 'Virgo', symbol: '♍', element: 'Earth', quality: 'Mutable', ruler: 'Mercury' },
+  { id: 7, name: 'Tula', sanskrit: 'तुला', english: 'Libra', symbol: '♎', element: 'Air', quality: 'Cardinal', ruler: 'Venus' },
+  { id: 8, name: 'Vrishchika', sanskrit: 'वृश्चिक', english: 'Scorpio', symbol: '♏', element: 'Water', quality: 'Fixed', ruler: 'Mars' },
+  { id: 9, name: 'Dhanu', sanskrit: 'धनु', english: 'Sagittarius', symbol: '♐', element: 'Fire', quality: 'Mutable', ruler: 'Jupiter' },
+  { id: 10, name: 'Makara', sanskrit: 'मकर', english: 'Capricorn', symbol: '♑', element: 'Earth', quality: 'Cardinal', ruler: 'Saturn' },
+  { id: 11, name: 'Kumbha', sanskrit: 'कुंभ', english: 'Aquarius', symbol: '♒', element: 'Air', quality: 'Fixed', ruler: 'Saturn' },
+  { id: 12, name: 'Meena', sanskrit: 'मीन', english: 'Pisces', symbol: '♓', element: 'Water', quality: 'Mutable', ruler: 'Jupiter' },
+];
+
+export const NAKSHATRAS = [
+  { id: 1, name: 'Ashwini', sanskrit: 'अश्विनी', lord: 'Ketu', degrees: [0, 13.333], deity: 'Ashwini Kumaras' },
+  { id: 2, name: 'Bharani', sanskrit: 'भरणी', lord: 'Venus', degrees: [13.333, 26.667], deity: 'Yama' },
+  { id: 3, name: 'Krittika', sanskrit: 'कृत्तिका', lord: 'Sun', degrees: [26.667, 40], deity: 'Agni' },
+  { id: 4, name: 'Rohini', sanskrit: 'रोहिणी', lord: 'Moon', degrees: [40, 53.333], deity: 'Brahma' },
+  { id: 5, name: 'Mrigashira', sanskrit: 'मृगशिरा', lord: 'Mars', degrees: [53.333, 66.667], deity: 'Soma' },
+  { id: 6, name: 'Ardra', sanskrit: 'आर्द्रा', lord: 'Rahu', degrees: [66.667, 80], deity: 'Rudra' },
+  { id: 7, name: 'Punarvasu', sanskrit: 'पुनर्वसु', lord: 'Jupiter', degrees: [80, 93.333], deity: 'Aditi' },
+  { id: 8, name: 'Pushya', sanskrit: 'पुष्य', lord: 'Saturn', degrees: [93.333, 106.667], deity: 'Brihaspati' },
+  { id: 9, name: 'Ashlesha', sanskrit: 'आश्लेषा', lord: 'Mercury', degrees: [106.667, 120], deity: 'Nagas' },
+  { id: 10, name: 'Magha', sanskrit: 'मघा', lord: 'Ketu', degrees: [120, 133.333], deity: 'Pitras' },
+  { id: 11, name: 'Purva Phalguni', sanskrit: 'पूर्व फाल्गुनी', lord: 'Venus', degrees: [133.333, 146.667], deity: 'Bhaga' },
+  { id: 12, name: 'Uttara Phalguni', sanskrit: 'उत्तर फाल्गुनी', lord: 'Sun', degrees: [146.667, 160], deity: 'Aryaman' },
+  { id: 13, name: 'Hasta', sanskrit: 'हस्त', lord: 'Moon', degrees: [160, 173.333], deity: 'Savitar' },
+  { id: 14, name: 'Chitra', sanskrit: 'चित्रा', lord: 'Mars', degrees: [173.333, 186.667], deity: 'Tvashtar' },
+  { id: 15, name: 'Swati', sanskrit: 'स्वाती', lord: 'Rahu', degrees: [186.667, 200], deity: 'Vayu' },
+  { id: 16, name: 'Vishakha', sanskrit: 'विशाखा', lord: 'Jupiter', degrees: [200, 213.333], deity: 'Indra-Agni' },
+  { id: 17, name: 'Anuradha', sanskrit: 'अनुराधा', lord: 'Saturn', degrees: [213.333, 226.667], deity: 'Mitra' },
+  { id: 18, name: 'Jyeshtha', sanskrit: 'ज्येष्ठा', lord: 'Mercury', degrees: [226.667, 240], deity: 'Indra' },
+  { id: 19, name: 'Mula', sanskrit: 'मूल', lord: 'Ketu', degrees: [240, 253.333], deity: 'Nirriti' },
+  { id: 20, name: 'Purva Ashadha', sanskrit: 'पूर्वाषाढा', lord: 'Venus', degrees: [253.333, 266.667], deity: 'Apas' },
+  { id: 21, name: 'Uttara Ashadha', sanskrit: 'उत्तराषाढा', lord: 'Sun', degrees: [266.667, 280], deity: 'Vishvadevas' },
+  { id: 22, name: 'Shravana', sanskrit: 'श्रवण', lord: 'Moon', degrees: [280, 293.333], deity: 'Vishnu' },
+  { id: 23, name: 'Dhanishtha', sanskrit: 'धनिष्ठा', lord: 'Mars', degrees: [293.333, 306.667], deity: 'Vasus' },
+  { id: 24, name: 'Shatabhisha', sanskrit: 'शतभिषा', lord: 'Rahu', degrees: [306.667, 320], deity: 'Varuna' },
+  { id: 25, name: 'Purva Bhadrapada', sanskrit: 'पूर्व भाद्रपद', lord: 'Jupiter', degrees: [320, 333.333], deity: 'Aja Ekapad' },
+  { id: 26, name: 'Uttara Bhadrapada', sanskrit: 'उत्तर भाद्रपद', lord: 'Saturn', degrees: [333.333, 346.667], deity: 'Ahir Budhnya' },
+  { id: 27, name: 'Revati', sanskrit: 'रेवती', lord: 'Mercury', degrees: [346.667, 360], deity: 'Pushan' },
+];
+
+export const PLANETS = [
+  { id: 'sun', name: 'Sun', sanskrit: 'Surya', symbol: '☉', color: '#f59e0b' },
+  { id: 'moon', name: 'Moon', sanskrit: 'Chandra', symbol: '☽', color: '#e2e8f0' },
+  { id: 'mars', name: 'Mars', sanskrit: 'Mangala', symbol: '♂', color: '#ef4444' },
+  { id: 'mercury', name: 'Mercury', sanskrit: 'Budha', symbol: '☿', color: '#10b981' },
+  { id: 'jupiter', name: 'Jupiter', sanskrit: 'Guru', symbol: '♃', color: '#f59e0b' },
+  { id: 'venus', name: 'Venus', sanskrit: 'Shukra', symbol: '♀', color: '#ec4899' },
+  { id: 'saturn', name: 'Saturn', sanskrit: 'Shani', symbol: '♄', color: '#8b5cf6' },
+  { id: 'rahu', name: 'Rahu', sanskrit: 'Rahu', symbol: '☊', color: '#6b7280' },
+  { id: 'ketu', name: 'Ketu', sanskrit: 'Ketu', symbol: '☋', color: '#9ca3af' },
+];
+
+export const VIMSHOTTARI_SEQUENCE = [
+  { lord: 'Ketu', years: 7 },
+  { lord: 'Venus', years: 20 },
+  { lord: 'Sun', years: 6 },
+  { lord: 'Moon', years: 10 },
+  { lord: 'Mars', years: 7 },
+  { lord: 'Rahu', years: 18 },
+  { lord: 'Jupiter', years: 16 },
+  { lord: 'Saturn', years: 19 },
+  { lord: 'Mercury', years: 17 },
+];
+
+export const HOUSE_MEANINGS = [
+  '', // placeholder for index 0
+  'Self, personality, physical body, new beginnings',
+  'Wealth, family, speech, values',
+  'Siblings, courage, communication, short journeys',
+  'Home, mother, emotions, property',
+  'Children, creativity, intelligence, past karma',
+  'Health, service, enemies, daily work',
+  'Partnerships, marriage, business relationships',
+  'Transformation, obstacles, longevity, occult',
+  'Higher learning, dharma, long journeys, luck',
+  'Career, reputation, father, social status',
+  'Gains, aspirations, elder siblings, social networks',
+  'Losses, liberation, foreign lands, moksha',
+];
+
+export const PLANET_COLORS: { [key: string]: string } = {
+  Sun: '#f59e0b',
+  Moon: '#c0c0c0',
+  Mars: '#ef4444',
+  Mercury: '#10b981',
+  Jupiter: '#f59e0b',
+  Venus: '#ec4899',
+  Saturn: '#8b5cf6',
+  Rahu: '#6b7280',
+  Ketu: '#9ca3af',
+  Lagna: '#22d3ee',
+};
