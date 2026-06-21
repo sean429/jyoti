@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useRef, useEffect, FormEvent } from 'react';
 
@@ -56,7 +56,7 @@ export default function BirthChartForm({ onSubmit, loading }: Props) {
 
   function selectPlace(place: GeoResult) {
     setSelectedPlace(place);
-    setCityQuery(place.name.split(',').slice(0, 2).join(','));
+    setCityQuery(place.name.split(',')[0].trim());
     setGeoResults([]);
   }
 
@@ -67,7 +67,7 @@ export default function BirthChartForm({ onSubmit, loading }: Props) {
     const lat = manualLatLon ? parseFloat(manualLat) : (selectedPlace?.lat ?? 20.5937);
     const lon = manualLatLon ? parseFloat(manualLon) : (selectedPlace?.lon ?? 78.9629);
     const placeName = manualLatLon
-      ? `${manualLat}°N, ${manualLon}°E`
+      ? `${manualLat}째N, ${manualLon}째E`
       : (selectedPlace ? cityQuery : 'India (default)');
 
     onSubmit({
@@ -131,7 +131,7 @@ export default function BirthChartForm({ onSubmit, loading }: Props) {
             className="text-xs"
             style={{ color: 'var(--text-muted)' }}
           >
-            {manualLatLon ? '↩ Search city' : '⚙ Manual coordinates'}
+            {manualLatLon ? '??Search city' : '??Manual coordinates'}
           </button>
         </div>
 
@@ -160,14 +160,14 @@ export default function BirthChartForm({ onSubmit, loading }: Props) {
                     style={{ color: 'var(--text)', borderBottom: '1px solid rgba(201,168,76,0.1)' }}
                     onClick={() => selectPlace(r)}
                   >
-                    {r.name.split(',').slice(0, 3).join(',')}
+                    {r.name.split(',').slice(0, 2).join(',')}
                   </button>
                 ))}
               </div>
             )}
             {selectedPlace && (
               <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                ✓ {selectedPlace.lat.toFixed(4)}°N, {selectedPlace.lon.toFixed(4)}°E
+                ??{selectedPlace.lat.toFixed(4)}째N, {selectedPlace.lon.toFixed(4)}째E
               </p>
             )}
           </div>
@@ -215,7 +215,7 @@ export default function BirthChartForm({ onSubmit, loading }: Props) {
           <option value={-5}>UTC-5:00 (EST)</option>
           <option value={-4}>UTC-4:00 (AST)</option>
           <option value={-3}>UTC-3:00</option>
-          <option value={0}>UTC±0 (GMT)</option>
+          <option value={0}>UTC짹0 (GMT)</option>
           <option value={1}>UTC+1:00 (CET)</option>
           <option value={2}>UTC+2:00 (EET)</option>
           <option value={3}>UTC+3:00 (MSK)</option>
@@ -223,7 +223,7 @@ export default function BirthChartForm({ onSubmit, loading }: Props) {
           <option value={4}>UTC+4:00 (Gulf)</option>
           <option value={4.5}>UTC+4:30 (Afghanistan)</option>
           <option value={5}>UTC+5:00 (PKT)</option>
-          <option value={5.5}>UTC+5:30 (IST — India) ★</option>
+          <option value={5.5}>UTC+5:30 (IST ??India) ??/option>
           <option value={5.75}>UTC+5:45 (Nepal)</option>
           <option value={6}>UTC+6:00 (BST)</option>
           <option value={6.5}>UTC+6:30 (Myanmar)</option>
@@ -249,7 +249,7 @@ export default function BirthChartForm({ onSubmit, loading }: Props) {
             Calculating your chart...
           </span>
         ) : (
-          '✦ Reveal My Kundali ✦'
+          '??Reveal My Kundali ??
         )}
       </button>
     </form>
