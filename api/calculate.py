@@ -1,9 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 import json
-import sys
 import os
 import importlib.util
-import traceback
 
 _vedic_mod = None
 
@@ -52,15 +50,7 @@ class handler(BaseHTTPRequestHandler):
         except KeyError as e:
             self._json(400, {"error": f"Missing required field: {e}"})
         except Exception as e:
-            here = os.path.dirname(os.path.abspath(__file__))
-            self._json(500, {
-                "error": str(e),
-                "type": type(e).__name__,
-                "traceback": traceback.format_exc(),
-                "vedic_path": os.path.join(here, "_vedic.py"),
-                "vedic_exists": os.path.exists(os.path.join(here, "_vedic.py")),
-                "dir_files": os.listdir(here),
-            })
+            self._json(500, {"error": str(e)})
 
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
