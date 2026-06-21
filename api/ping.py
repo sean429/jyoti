@@ -1,6 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import sys
+import os
 
 class handler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
@@ -24,6 +25,9 @@ class handler(BaseHTTPRequestHandler):
             "python": sys.version,
             "swisseph": swe_version,
             "vedic_import": vedic_ok,
+            "sys_path": sys.path,
+            "cwd": os.getcwd(),
+            "api_dir_files": os.listdir(os.path.dirname(__file__)) if os.path.exists(os.path.dirname(__file__)) else "N/A",
         }).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
