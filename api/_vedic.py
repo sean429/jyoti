@@ -274,10 +274,12 @@ def calculate_chart(
     sidereal = {k: (v - ayanamsa) % 360 for k, v in tropical.items()}
 
     # Ascendant (Whole Sign) — sidereal via houses_ex + FLG_SIDEREAL
-    # houses_ex with FLG_SIDEREAL returns ascmc[0] already in sidereal longitude
+    # cusps[1] is the sidereal start of Whole Sign H1 (= tropical H1 cusp - ayanamsa).
+    # Using cusps[1] for lagna_sign gives the correct Vedic Whole Sign lagna even when
+    # the sidereal ASC falls right at a sign boundary (e.g. Cancer/Leo at 120°).
     cusps, ascmc = swe.houses_ex(jd, swe.FLG_SIDEREAL, lat, lon, b'W')
-    asc_sidereal = ascmc[0]
-    lagna_sign   = _sign(asc_sidereal)
+    asc_sidereal = ascmc[0]          # true sidereal Ascendant degree (used for D-chart lagnas)
+    lagna_sign   = _sign(cusps[1])   # Whole Sign H1 sign = sign of the sidereal H1 cusp
 
     # Divisional lagna signs (ASC in each divisional chart)
     div_lagnas = {}
@@ -387,7 +389,7 @@ def debug_chart(year, month, day, hour, minute, lat, lon, utc_offset, node_type=
 
     div_lagnas = {f"D{d}": SIGNS[get_div_sign(asc_sid, d)] for d in SUPPORTED_DIVISIONS}
     sign_mapping = {k: SIGNS[_sign(v)] for k, v in sidereal.items()}
-    lagna_sign = _sign(asc_sid)
+    lagna_sign = _sign(cusps[1])   # Whole Sign: use H1 cusp, not raw sidereal ASC
     house_mapping = {k: (((_sign(v)) - lagna_sign) % 12) + 1
                      for k, v in sidereal.items() if k != "ascendant"}
 
