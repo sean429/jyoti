@@ -92,7 +92,7 @@ Use Sanskrit and English terminology together. Be specific and personalized, not
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      generationConfig: { maxOutputTokens: 2048, temperature: 0.8 },
+      generationConfig: { maxOutputTokens: 8192, temperature: 0.8 },
     });
 
     const result = await model.generateContent(prompt);
