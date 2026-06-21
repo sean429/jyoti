@@ -76,7 +76,7 @@ def get_div_sign(lon: float, d: int) -> int:
         part = int(deg / 10)
         return (sign + part * 4) % 12
 
-        elif d == 4:   # Chaturthamsha ? 4 parts of 7.5deg each
+    elif d == 4:   # Chaturthamsha — 4 parts of 7.5deg each
         # Each successive part shifts 3 signs forward from natal sign
         part = int(deg / 7.5)
         return (sign + part * 3) % 12
@@ -158,7 +158,7 @@ def get_div_sign(lon: float, d: int) -> int:
         part = int(deg / 0.5)  # 0-59
         return (sign * 60 + part) % 12  # sign*60 % 12 = 0, so = part % 12
 
-        else:
+    else:
         raise ValueError(f"Divisional chart D{d} not supported. Supported: {SUPPORTED_DIVISIONS}")
 
 
@@ -176,7 +176,7 @@ def _dms(deg):
     d = int(deg)
     m = int((deg - d) * 60)
     s = int(((deg - d) * 60 - m) * 60)
-    return f"{d}°{m:02d}'{s:02d}\"
+    return f"{d}°{m:02d}'{s:02d}\""
 
 
 def calculate_dashas(moon_lon, birth_dt):
