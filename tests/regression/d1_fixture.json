@@ -1,0 +1,63 @@
+{
+  "_note": "Birth time estimated as 12:00 KST. Moon position is time-sensitive ? Leo ASC requires specific birth time.",
+  "birth": {
+    "year": 2001,
+    "month": 4,
+    "day": 29,
+    "hour": 12,
+    "minute": 0,
+    "lat": 37.2636,
+    "lon": 127.0286,
+    "utcOffset": 9
+  },
+  "expected_d1_from_astro_seek": {
+    "lagna_sign": 4,
+    "lagna_sign_name": "Simha",
+    "sun": {
+      "sign": 0,
+      "sign_name": "Mesha",
+      "degree_approx": 15
+    },
+    "moon": {
+      "sign": 3,
+      "sign_name": "Karka",
+      "degree_approx": 0
+    },
+    "mercury": {
+      "sign": 0,
+      "sign_name": "Mesha",
+      "degree_approx": 22
+    },
+    "venus": {
+      "sign": 11,
+      "sign_name": "Meena",
+      "degree_approx": 9
+    },
+    "mars": {
+      "sign": 8,
+      "sign_name": "Dhanu",
+      "degree_approx": 4
+    },
+    "jupiter": {
+      "sign": 1,
+      "sign_name": "Vrishabha",
+      "degree_approx": 19
+    },
+    "saturn": {
+      "sign": 1,
+      "sign_name": "Vrishabha",
+      "degree_approx": 7
+    },
+    "rahu": {
+      "sign": 2,
+      "sign_name": "Mithuna",
+      "degree_approx": 15
+    },
+    "ketu": {
+      "sign": 8,
+      "sign_name": "Dhanu",
+      "degree_approx": 15
+    }
+  },
+  "tolerance_degrees": 1
+}

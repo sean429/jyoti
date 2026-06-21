@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateChart } from '@/lib/vedic-calculations';
 
 export async function POST(req: NextRequest) {
+  const pythonUrl = process.env.PYTHON_SERVICE_URL;
+  if (!pythonUrl) {
+    return NextResponse.json(
+      { error: 'Python calculation service not configured. Set PYTHON_SERVICE_URL in Vercel environment variables. Deploy python-service/ to Render first.' },
+      { status: 503 }
+    );
+  }
   try {
     const body = await req.json();
-    const { year, month, day, hour, minute, latitude, longitude, utcOffset } = body;
-
-    if (!year || !month || !day || latitude === undefined || longitude === undefined) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    const chart = calculateChart(
-      Number(year), Number(month), Number(day),
-      Number(hour || 12), Number(minute || 0),
-      Number(latitude), Number(longitude),
-      Number(utcOffset || 0)
-    );
-
-    return NextResponse.json(chart);
+    const res = await fetch(`${pythonUrl}/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30000),
+    });
+    const data = await res.json();
+    if (!res.ok) return NextResponse.json(data, { status: res.status });
+    return NextResponse.json(data);
   } catch (err) {
-    console.error('Calculation error:', err);
-    return NextResponse.json({ error: 'Calculation failed' }, { status: 500 });
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: `Calculation service error: ${msg}` }, { status: 502 });
   }
 }
