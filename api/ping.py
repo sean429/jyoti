@@ -8,27 +8,46 @@ class handler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        try:
-            import swisseph as swe
-            swe_version = swe.version
-        except Exception as e:
-            swe_version = f"ERROR: {e}"
+        info = {}
 
-        try:
-            from _vedic import SUPPORTED_DIVISIONS
-            vedic_ok = True
-        except Exception as e:
-            vedic_ok = f"ERROR: {e}"
+        # Check sys.path
+        info["sys_path"] = sys.path
+        info["cwd"] = os.getcwd()
 
-        body = json.dumps({
-            "status": "ok",
-            "python": sys.version,
-            "swisseph": swe_version,
-            "vedic_import": vedic_ok,
-            "sys_path": sys.path,
-            "cwd": os.getcwd(),
-            "api_dir_files": os.listdir(os.path.dirname(__file__)) if os.path.exists(os.path.dirname(__file__)) else "N/A",
-        }).encode("utf-8")
+        # Check if _vedic.py exists and read its first bytes
+        vedic_path = "/var/task/_vedic.py"
+        if os.path.exists(vedic_path):
+            with open(vedic_path, "rb") as f:
+                first_bytes = list(f.read(10))
+            info["vedic_first_bytes"] = first_bytes
+            info["vedic_first_hex"] = [hex(b) for b in first_bytes]
+        else:
+            info["vedic_exists"] = False
+
+        # Try compile first (catches SyntaxError)
+        try:
+            with open(vedic_path, "r", encoding="utf-8-sig") as f:
+                src = f.read()
+            compile(src, vedic_path, "exec")
+            info["vedic_compile"] = "OK"
+        except SyntaxError as e:
+            info["vedic_compile"] = f"SyntaxError line {e.lineno}: {e.msg}"
+        except Exception as e:
+            info["vedic_compile"] = f"{type(e).__name__}: {e}"
+
+        # Try explicit sys.path manipulation
+        sys.path.insert(0, "/var/task")
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("_vedic", vedic_path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            info["importlib_load"] = "OK"
+            info["vedic_supported_divisions"] = getattr(mod, "SUPPORTED_DIVISIONS", "missing")
+        except Exception as e:
+            info["importlib_load"] = f"{type(e).__name__}: {e}"
+
+        body = json.dumps(info, ensure_ascii=False).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
