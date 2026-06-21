@@ -102,7 +102,7 @@ export default function BirthChartFormKo({ onSubmit, loading }: Props) {
             required
             value={date}
             onChange={e => setDate(e.target.value)}
-            max="2025-12-31"
+            max="2030-12-31"
             min="1900-01-01"
           />
         </div>

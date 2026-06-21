@@ -91,7 +91,7 @@ export default function BirthChartForm({ onSubmit, loading }: Props) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-cinzel text-gold-solid mb-2">Date of Birth *</label>
-          <input type="date" className="input-vedic" required value={date} onChange={e => setDate(e.target.value)} max="2025-12-31" min="1900-01-01" />
+          <input type="date" className="input-vedic" required value={date} onChange={e => setDate(e.target.value)} max="2030-12-31" min="1900-01-01" />
         </div>
         <div>
           <label className="block text-sm font-cinzel text-gold-solid mb-2">Time of Birth</label>
