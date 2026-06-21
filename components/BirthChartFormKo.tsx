@@ -56,7 +56,7 @@ export default function BirthChartFormKo({ onSubmit, loading }: Props) {
 
   function selectPlace(place: GeoResult) {
     setSelectedPlace(place);
-    setCityQuery(place.name.split(',').slice(0, 2).join(','));
+    setCityQuery(place.name.split(',')[0].trim());
     setGeoResults([]);
   }
 
@@ -156,7 +156,7 @@ export default function BirthChartFormKo({ onSubmit, loading }: Props) {
                     style={{ color: 'var(--text)', borderBottom: '1px solid rgba(201,168,76,0.1)' }}
                     onClick={() => selectPlace(r)}
                   >
-                    {r.name.split(',').slice(0, 3).join(',')}
+                    {r.name.split(',').slice(0, 2).join(',')}
                   </button>
                 ))}
               </div>
