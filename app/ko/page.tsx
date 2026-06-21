@@ -43,7 +43,7 @@ export default function KoHomePage() {
       <div style={{ position: 'relative', zIndex: 1 }}>
         {/* Nav */}
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }}
-          className="sticky top-0 z-50">
+          className="sticky top-0 z-50 pt-2">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="text-2xl pulse-gold">ॐ</span>
@@ -67,7 +67,7 @@ export default function KoHomePage() {
         </nav>
 
         {/* Hero */}
-        <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 text-center">
+        <section className="max-w-6xl mx-auto px-6 pt-14 pb-16 text-center">
           <div className="mb-6">
             <p className="text-4xl mb-2" style={{ color: 'rgba(201,168,76,0.3)', fontFamily: 'serif' }}>
               ॥ श्री गणेशाय नमः ॥
