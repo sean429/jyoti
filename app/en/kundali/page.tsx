@@ -50,6 +50,9 @@ export default function EnKundaliPage() {
             <Link href="/ko/kundali" className="text-xs px-3 py-1.5 rounded-lg" style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
               🌐 한국어
             </Link>
+            <Link href="/zh/kundali" className="text-xs px-3 py-1.5 rounded-lg" style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              🌐 中文
+            </Link>
           </div>
         </nav>
 

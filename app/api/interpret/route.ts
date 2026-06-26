@@ -36,15 +36,36 @@ function sanitize(value: unknown, maxLen = 120): string {
 }
 
 // ---------------------------------------------------------------------------
-// Map Gemini error codes to safe user-facing Korean messages.
+// Map Gemini error codes to safe user-facing messages (lang-aware).
 // ---------------------------------------------------------------------------
-function safeErrorMessage(err: unknown): { status: number; message: string } {
+function safeErrorMessage(err: unknown, lang = 'ko'): { status: number; message: string } {
   const msg = err instanceof Error ? err.message.toLowerCase() : '';
   if (msg.includes('503') || msg.includes('overloaded') || msg.includes('unavailable'))
-    return { status: 503, message: '현재 AI 해석 서버가 일시적으로 혼잡합니다. 잠시 후 다시 시도해주세요.' };
+    return {
+      status: 503,
+      message: lang === 'zh'
+        ? 'AI解读服务暂时繁忙，请稍后再试。'
+        : lang === 'en'
+          ? 'The AI service is temporarily overloaded. Please try again shortly.'
+          : '현재 AI 해석 서버가 일시적으로 혼잡합니다. 잠시 후 다시 시도해주세요.',
+    };
   if (msg.includes('429') || msg.includes('quota') || msg.includes('rate'))
-    return { status: 429, message: '요청이 일시적으로 많습니다. 잠시 후 다시 시도해주세요.' };
-  return { status: 500, message: '해석 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.' };
+    return {
+      status: 429,
+      message: lang === 'zh'
+        ? '请求过于频繁，请稍后再试。'
+        : lang === 'en'
+          ? 'Too many requests. Please try again shortly.'
+          : '요청이 일시적으로 많습니다. 잠시 후 다시 시도해주세요.',
+    };
+  return {
+    status: 500,
+    message: lang === 'zh'
+      ? '生成解读时出现问题，请稍后再试。'
+      : lang === 'en'
+        ? 'An error occurred while generating the interpretation. Please try again.'
+        : '해석 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
+  };
 }
 
 export async function POST(req: NextRequest) {
@@ -57,8 +78,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  let lang = 'ko';
   try {
-    const { chart, birthInfo, lang = 'en', theme } = await req.json();
+    const body = await req.json();
+    lang = body.lang ?? 'ko';
+    const { chart, birthInfo, theme } = body;
 
     // Sanitize all user-controlled fields (untrusted data, not instructions)
     const safeName      = sanitize(birthInfo?.name,  80);
@@ -268,7 +292,7 @@ ${chartPlacementsStr}
 반드시 제공된 차트 데이터에서 근거를 들어 설명하세요.
 중요한 판단마다 어떤 데이터, 차트, 하우스, 행성, 낙샤트라, 다샤를 근거로 삼았는지 함께 말하세요.
 
-${lang === 'ko' ? 'return only Korean.' : 'return only English. Your entire response must be in English.'}`;
+${lang === 'ko' ? 'return only Korean.' : lang === 'zh' ? 'return only Simplified Chinese. Your entire response must be in Simplified Chinese (zh-CN).' : 'return only English. Your entire response must be in English.'}`;
 
 
     const model = genAI.getGenerativeModel({
@@ -284,7 +308,7 @@ ${lang === 'ko' ? 'return only Korean.' : 'return only English. Your entire resp
     const name = err instanceof Error ? err.name : 'UnknownError';
     const code = (err as Record<string, unknown>)?.status ?? (err as Record<string, unknown>)?.code ?? '';
     console.error('[interpret] error:', name, code);
-    const { status, message } = safeErrorMessage(err);
+    const { status, message } = safeErrorMessage(err, lang);
     return NextResponse.json({ error: message }, { status });
   }
 }

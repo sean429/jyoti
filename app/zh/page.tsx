@@ -1,41 +1,41 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 
 const features = [
   {
     icon: '🔭',
-    title: '쿤달리 차트',
-    desc: '라히리 아야남사(Lahiri Ayanamsa)로 계산된 정밀 북인도식 출생 차트. 9개 행성의 위치를 한눈에 확인하세요.',
+    title: '命盘图表',
+    desc: '基于拉希里月差（Lahiri Ayanamsa）精确计算的北印度式出生星盘，一目了然呈现9颗行星位置。',
   },
   {
     icon: '🌙',
-    title: '나크샤트라 분석',
-    desc: '27개 달의 별자리(나크샤트라)와 수호신, 파다(Pada)를 분석해 당신의 내면 본질을 밝혀드립니다.',
+    title: 'Nakshatra分析',
+    desc: '解析27个月亮星宿（Nakshatra）、守护神与Pada（宫位段），揭示您内在本质。',
   },
   {
     icon: '⏳',
-    title: '빔쇼타리 다샤',
-    desc: '120년 주기 행성 대운(Mahadasha)과 소운(Antardasha) 시스템으로 인생의 흐름을 파악하세요.',
+    title: '维姆肖塔里大运',
+    desc: '以120年周期行星大运（Mahadasha）与小运（Antardasha）系统，洞见人生流转。',
   },
   {
     icon: '✨',
-    title: 'AI 한국어 해석',
-    desc: 'Claude AI가 당신의 쿤달리를 분석해 성격, 재물, 건강, 인간관계까지 한국어로 상세히 해석해드립니다.',
+    title: 'AI中文解读',
+    desc: 'AI解析您的命盘，从性格、财运、健康到人际关系，以中文提供深入解读。',
   },
 ];
 
 const planets = [
-  { name: '수리야', korean: '태양', symbol: '☉', role: '영혼과 생명력', color: '#f59e0b' },
-  { name: '찬드라', korean: '달', symbol: '☽', role: '마음과 감정', color: '#c0c0c0' },
-  { name: '망갈라', korean: '화성', symbol: '♂', role: '에너지와 용기', color: '#ef4444' },
-  { name: '부다', korean: '수성', symbol: '☿', role: '지성과 소통', color: '#10b981' },
-  { name: '구루', korean: '목성', symbol: '♃', role: '지혜와 행운', color: '#fbbf24' },
-  { name: '슈크라', korean: '금성', symbol: '♀', role: '사랑과 아름다움', color: '#ec4899' },
-  { name: '샤니', korean: '토성', symbol: '♄', role: '카르마와 규율', color: '#a78bfa' },
-  { name: '라후', korean: '북교점', symbol: '☊', role: '욕망과 성장', color: '#94a3b8' },
-  { name: '케투', korean: '남교점', symbol: '☋', role: '해탈과 과거', color: '#9ca3af' },
+  { name: '苏利耶', chinese: '太阳', symbol: '☉', role: '灵魂与生命力', color: '#f59e0b' },
+  { name: '旃陀罗', chinese: '月亮', symbol: '☽', role: '心灵与情感', color: '#c0c0c0' },
+  { name: '芒格拉', chinese: '火星', symbol: '♂', role: '能量与勇气', color: '#ef4444' },
+  { name: '布达', chinese: '水星', symbol: '☿', role: '智慧与沟通', color: '#10b981' },
+  { name: '古鲁', chinese: '木星', symbol: '♃', role: '智慧与好运', color: '#fbbf24' },
+  { name: '舒克拉', chinese: '金星', symbol: '♀', role: '爱情与美丽', color: '#ec4899' },
+  { name: '沙尼', chinese: '土星', symbol: '♄', role: '业力与纪律', color: '#a78bfa' },
+  { name: '罗睺', chinese: '北交点', symbol: '☊', role: '欲望与成长', color: '#94a3b8' },
+  { name: '计都', chinese: '南交点', symbol: '☋', role: '解脱与过去', color: '#9ca3af' },
 ];
 
-export default function KoHomePage() {
+export default function ZhHomePage() {
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="stars-bg" />
@@ -49,21 +49,21 @@ export default function KoHomePage() {
               <span className="text-2xl pulse-gold">ॐ</span>
               <div>
                 <span className="font-cinzel-deco text-base font-bold text-gold">Jyoti</span>
-                <p className="text-xs" style={{ color: 'var(--text-muted)', lineHeight: 1 }}>인도 베딕 점성술 AI</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)', lineHeight: 1 }}>印度吠陀占星 AI</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <Link href="/ko" className="text-xs px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+                style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                🌐 한국어
+              </Link>
               <Link href="/en" className="text-xs px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
                 style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
                 🌐 English
               </Link>
-              <Link href="/zh" className="text-xs px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
-                style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                🌐 中文
-              </Link>
-              <Link href="/ko/kundali">
+              <Link href="/zh/kundali">
                 <span className="btn-gold text-sm" style={{ display: 'inline-block', padding: '0.5rem 1.25rem' }}>
-                  내 쿤달리 보기
+                  查看我的命盘
                 </span>
               </Link>
             </div>
@@ -81,32 +81,30 @@ export default function KoHomePage() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6 text-sm fade-in-up"
             style={{ background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.25)', color: 'var(--gold)' }}>
             <span>✦</span>
-            <span className="font-cinzel">5,000년 역사의 인도 베딕 점성술</span>
+            <span className="font-cinzel">5000年历史的印度吠陀占星术</span>
             <span>✦</span>
           </div>
 
           <h1 className="font-cinzel-deco text-4xl md:text-6xl font-bold mb-6 leading-tight fade-in-up">
-            <span className="text-gold">당신의 우주적 운명을</span>
-            <br />
-            <span style={{ color: 'var(--text)' }}>밝혀드립니다</span>
+            <span className="text-gold">揭示您的宇宙命运</span>
           </h1>
 
           <p className="font-cormorant text-xl md:text-2xl mb-8 max-w-2xl mx-auto leading-relaxed fade-in-up-delay-1"
             style={{ color: 'rgba(240,235,224,0.75)', fontStyle: 'italic' }}>
-            고대 인도 조티쉬(Jyotish) 점성술이 AI 기술과 만났습니다.<br />
-            당신이 태어난 순간, 우주는 이미 당신에게 속삭이고 있었습니다.
+            古印度Jyotish占星术与AI技术的完美融合。<br />
+            您诞生的那一刻，宇宙便已向您低语。
           </p>
 
           <div className="flex flex-wrap gap-4 justify-center fade-in-up-delay-2">
-            <Link href="/ko/kundali">
+            <Link href="/zh/kundali">
               <span className="btn-gold text-base" style={{ display: 'inline-block', padding: '0.875rem 2.5rem', fontSize: '1rem' }}>
-                ✦ 나의 쿤달리 차트 보기 ✦
+                ✦ 查看我的命盘 ✦
               </span>
             </Link>
           </div>
 
           <p className="mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-            생년월일과 출생 장소만 입력하면 바로 확인 가능합니다
+            只需输入出生日期与出生地，即可立即查看
           </p>
 
           <div className="flex items-center gap-4 mt-12 mb-2 justify-center">
@@ -116,7 +114,7 @@ export default function KoHomePage() {
           </div>
 
           <p className="text-xs font-cinzel tracking-widest" style={{ color: 'var(--text-muted)' }}>
-            조티쉬 · 나크샤트라 · 쿤달리 · 다샤 · 라시
+            Jyotish · Nakshatra · Kundali · Dasha · Rashi
           </p>
         </section>
 
@@ -130,7 +128,7 @@ export default function KoHomePage() {
                     {p.symbol}
                   </span>
                   <span className="font-cinzel text-xs" style={{ color: p.color }}>{p.name}</span>
-                  <span className="text-[10px] text-center" style={{ color: 'rgba(156,163,175,0.6)' }}>{p.korean}<br />{p.role}</span>
+                  <span className="text-[10px] text-center" style={{ color: 'rgba(156,163,175,0.6)' }}>{p.chinese}<br />{p.role}</span>
                 </div>
               ))}
             </div>
@@ -140,8 +138,8 @@ export default function KoHomePage() {
         {/* Features */}
         <section className="max-w-6xl mx-auto px-6 py-20">
           <div className="text-center mb-14">
-            <h2 className="font-cinzel text-2xl md:text-3xl font-bold mb-3 text-gold">무엇을 알 수 있나요?</h2>
-            <p style={{ color: 'var(--text-muted)' }}>출생 정보 하나로 이 모든 것을 확인하세요</p>
+            <h2 className="font-cinzel text-2xl md:text-3xl font-bold mb-3 text-gold">您能了解什么？</h2>
+            <p style={{ color: 'var(--text-muted)' }}>仅凭出生信息，即可获得以下全部内容</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -161,14 +159,14 @@ export default function KoHomePage() {
         <section style={{ background: 'rgba(16,16,42,0.4)', borderTop: '1px solid rgba(201,168,76,0.1)' }}>
           <div className="max-w-4xl mx-auto px-6 py-20">
             <h2 className="font-cinzel text-2xl font-bold text-center text-gold mb-12">
-              <span className="ornament">이렇게 사용하세요</span>
+              <span className="ornament">使用方法</span>
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[
-                { step: '01', title: '생년월일 입력', desc: '태어난 날짜, 시간, 장소를 입력하세요. 태어난 시간이 없어도 괜찮습니다.' },
-                { step: '02', title: '차트 자동 계산', desc: '정밀한 천문 알고리즘으로 라히리 아야남사 기반의 사이드리얼 행성 위치를 계산합니다.' },
-                { step: '03', title: 'AI 한국어 해석', desc: 'Claude AI가 당신의 쿤달리를 분석해 성격, 운세, 현재 대운을 한국어로 해석합니다.' },
+                { step: '01', title: '输入出生信息', desc: '填写出生日期、时间与地点。不知道出生时间也没关系。' },
+                { step: '02', title: '自动计算星盘', desc: '精密天文算法基于拉希里月差计算恒星天体行星位置。' },
+                { step: '03', title: 'AI中文解读', desc: 'AI解析您的命盘，以中文解读性格、运势与当前大运。' },
               ].map(s => (
                 <div key={s.step} className="text-center">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 font-cinzel font-bold text-lg"
@@ -183,13 +181,13 @@ export default function KoHomePage() {
           </div>
         </section>
 
-        {/* Testimonial-style info */}
+        {/* Stats */}
         <section className="max-w-4xl mx-auto px-6 py-16">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
             {[
-              { num: '27개', label: '나크샤트라', desc: '달의 별자리 완전 분석' },
-              { num: '9개', label: '그라하(행성)', desc: '태양·달·화·수·목·금·토·라후·케투' },
-              { num: '120년', label: '다샤 시스템', desc: '빔쇼타리 대운·소운 체계' },
+              { num: '27个', label: 'Nakshatra', desc: '月亮星宿完整分析' },
+              { num: '9颗', label: '行星（Graha）', desc: '太阳·月亮·火·水·木·金·土·罗睺·计都' },
+              { num: '120年', label: 'Dasha系统', desc: '维姆肖塔里大运·小运体系' },
             ].map(s => (
               <div key={s.num} className="card p-6">
                 <p className="font-cinzel-deco text-3xl font-bold text-gold mb-1">{s.num}</p>
@@ -205,17 +203,17 @@ export default function KoHomePage() {
           <div className="card glow-purple p-10 md:p-14 text-center">
             <p className="text-3xl mb-4" style={{ color: 'rgba(201,168,76,0.4)' }}>☽ ✦ ☉</p>
             <h2 className="font-cinzel-deco text-2xl md:text-3xl font-bold text-gold mb-4">
-              별이 준비되어 있습니다
+              星辰已准备好了
             </h2>
             <p className="font-cormorant text-xl mb-3" style={{ color: 'rgba(240,235,224,0.7)', fontStyle: 'italic' }}>
-              당신이 태어난 그 순간, 우주는 당신을 위한 이야기를 새겨두었습니다.
+              您诞生的那一刻，宇宙已将您的故事刻入星辰之中。
             </p>
             <p className="text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
-              인도 베딕 점성술로 당신의 라그나(상승궁), 달 별자리, 현재 대운을 확인해보세요
+              通过印度吠陀占星，了解您的上升星座（Lagna）、月亮星座与当前大运
             </p>
-            <Link href="/ko/kundali">
+            <Link href="/zh/kundali">
               <span className="btn-gold text-base" style={{ display: 'inline-block', padding: '1rem 3rem' }}>
-                지금 바로 시작하기 ✦
+                立即开始 ✦
               </span>
             </Link>
           </div>
@@ -229,10 +227,11 @@ export default function KoHomePage() {
               ॥ यदा यदा हि धर्मस्य ग्लानिर्भवति भारत ॥
             </p>
             <div className="flex items-center justify-center gap-4 mt-3">
+              <Link href="/ko" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>한국어 버전</Link>
               <Link href="/en" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>English Version</Link>
             </div>
             <p className="text-xs mt-3" style={{ color: 'rgba(156,163,175,0.4)' }}>
-              본 서비스는 오락 및 자기 성찰 목적입니다. 라히리 아야남사 기반의 간소화된 행성 계산을 사용합니다.
+              本服务仅供娱乐与自我探索目的。使用拉希里月差的简化行星算法。
             </p>
           </div>
         </footer>

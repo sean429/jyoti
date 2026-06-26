@@ -13,7 +13,7 @@ export default function RootPage() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>인도 베딕 점성술 AI · Vedic Astrology · वैदिक ज्योतिष</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.875rem', width: '100%', maxWidth: '28rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.875rem', width: '100%', maxWidth: '42rem' }}>
           <Link href="/ko" className="block">
             <div className="card glow-gold text-center hover:scale-105 transition-all cursor-pointer" style={{ padding: '1.25rem 0.75rem' }}>
               <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🇰🇷</p>
@@ -28,6 +28,14 @@ export default function RootPage() {
               <h2 className="font-cinzel font-bold" style={{ color: 'var(--gold-light)', fontSize: '1rem', marginBottom: '0.4rem' }}>English</h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '0.875rem', lineHeight: 1.5 }}>Vedic Astrology<br />AI-powered Kundali readings</p>
               <span className="font-cinzel" style={{ border: '1px solid rgba(201,168,76,0.4)', color: 'var(--gold)', display: 'inline-block', padding: '0.4rem 1.1rem', fontSize: '0.8rem', borderRadius: '0.5rem' }}>Begin →</span>
+            </div>
+          </Link>
+          <Link href="/zh" className="block">
+            <div className="card text-center hover:scale-105 transition-all cursor-pointer" style={{ padding: '1.25rem 0.75rem', border: '1px solid rgba(201,168,76,0.2)' }}>
+              <p style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🇨🇳</p>
+              <h2 className="font-cinzel font-bold" style={{ color: 'var(--gold-light)', fontSize: '1rem', marginBottom: '0.4rem' }}>中文</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginBottom: '0.875rem', lineHeight: 1.5 }}>吠陀占星术<br />AI中文命盘解读</p>
+              <span className="font-cinzel" style={{ border: '1px solid rgba(201,168,76,0.4)', color: 'var(--gold)', display: 'inline-block', padding: '0.4rem 1.1rem', fontSize: '0.8rem', borderRadius: '0.5rem' }}>开始 →</span>
             </div>
           </Link>
         </div>
