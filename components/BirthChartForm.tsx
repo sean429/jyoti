@@ -88,7 +88,7 @@ export default function BirthChartForm({ onSubmit, loading }: Props) {
         <input className="input-vedic" placeholder="Enter your name" value={name} onChange={e => setName(e.target.value)} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-cinzel text-gold-solid mb-2">Date of Birth *</label>
           <input type="date" className="input-vedic" required value={date} onChange={e => setDate(e.target.value)} max="2030-12-31" min="1900-01-01" />

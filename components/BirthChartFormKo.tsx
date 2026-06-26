@@ -93,7 +93,7 @@ export default function BirthChartFormKo({ onSubmit, loading }: Props) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-cinzel text-gold-solid mb-2">생년월일 *</label>
           <input

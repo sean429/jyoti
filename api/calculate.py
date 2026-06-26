@@ -53,6 +53,7 @@ class handler(BaseHTTPRequestHandler):
             self._json(500, {"error": str(e)})
 
     def _cors(self):
+        # TODO: restrict to ALLOWED_ORIGIN env var once production domain is stable
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")

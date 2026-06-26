@@ -41,13 +41,13 @@ SUPPORTED_DIVISIONS = [1, 2, 3, 4, 7, 9, 10, 12, 16, 20, 24, 27, 30, 40, 45, 60]
 
 # D9 starting sign per natal sign: Fire->Aries(0), Earth->Capricorn(9), Air->Libra(6), Water->Cancer(3)
 _D9_START  = [0, 9, 6, 3, 0, 9, 6, 3, 0, 9, 6, 3]
-# D16: Movable->Aries(0), Fixed->Leo(4), Mutable->Sagittarius(8)
+# D16: Fire->Aries(0), Earth->Capricorn(9), Air->Libra(6), Water->Cancer(3)
 _D16_START = [0, 4, 8, 0, 4, 8, 0, 4, 8, 0, 4, 8]
 # D20: Movable->Aries(0), Fixed->Sagittarius(8), Mutable->Leo(4)
 _D20_START = [0, 8, 4, 0, 8, 4, 0, 8, 4, 0, 8, 4]
 # D27 (Bhamsha): same as D9 starting signs
 _D27_START = [0, 3, 6, 9, 0, 3, 6, 9, 0, 3, 6, 9]
-# D45: Movable->Aries(0), Fixed->Leo(4), Mutable->Sagittarius(8)
+# D45: Movable->Aries(0), Fixed->Sagittarius(8), Mutable->Leo(4)
 _D45_START = [0, 4, 8, 0, 4, 8, 0, 4, 8, 0, 4, 8]
 
 
@@ -153,10 +153,9 @@ def get_div_sign(lon: float, d: int) -> int:
         return (_D45_START[sign] + part) % 12
 
     elif d == 60:  # Shashtiamsha -- 60 parts of 0.5deg each
-        # Cycles 5 times through all 12 signs within each natal sign.
-        # The 60 parts are counted from Aries regardless of natal sign.
+        # Counts from the natal sign itself, same shape as D12 but with 60 parts.
         part = int(deg / 0.5)  # 0-59
-        return (sign * 60 + part) % 12  # sign*60 % 12 = 0, so = part % 12
+        return (sign + part) % 12
 
     else:
         raise ValueError(f"Divisional chart D{d} not supported. Supported: {SUPPORTED_DIVISIONS}")
@@ -273,15 +272,13 @@ def calculate_chart(
     # Convert to sidereal
     sidereal = {k: (v - ayanamsa) % 360 for k, v in tropical.items()}
 
-    # Ascendant (Whole Sign) — sidereal via houses_ex + FLG_SIDEREAL
-    # cusps[1] is the sidereal start of Whole Sign H1 (= tropical H1 cusp - ayanamsa).
-    # Using cusps[1] for lagna_sign gives the correct Vedic Whole Sign lagna even when
-    # the sidereal ASC falls right at a sign boundary (e.g. Cancer/Leo at 120°).
-    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'W', swe.FLG_SIDEREAL)
-    asc_sidereal = ascmc[0]          # true sidereal Ascendant degree (used for D-chart lagnas)
-    lagna_sign   = _sign(cusps[1])   # Whole Sign H1 sign = sign of the sidereal H1 cusp
+    # Ascendant — sidereal ASC for D1 lagna and all divisional lagnas
+    cusps_t, ascmc_t = swe.houses(jd, lat, lon, b'W')
+    tropical_asc = ascmc_t[0]
+    asc_sidereal = (tropical_asc - ayanamsa) % 360
+    lagna_sign   = _sign(asc_sidereal)
 
-    # Divisional lagna signs (ASC in each divisional chart)
+    # Divisional lagna signs
     div_lagnas = {}
     for d in divisions:
         ds = get_div_sign(asc_sidereal, d)
@@ -380,16 +377,16 @@ def debug_chart(year, month, day, hour, minute, lat, lon, utc_offset, node_type=
     sidereal["ketu"] = round((sidereal["rahu"] + 180) % 360, 6)
 
     cusps_t, ascmc_t = swe.houses(jd, lat, lon, b'W')
-    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'W', swe.FLG_SIDEREAL)
-    tropical["ascendant"] = round(ascmc_t[0], 6)
-    sidereal["ascendant"] = round(ascmc[0], 6)
+    trop_asc = ascmc_t[0]
+    tropical["ascendant"] = round(trop_asc, 6)
+    asc_sid = (trop_asc - ayanamsa) % 360
+    sidereal["ascendant"] = round(asc_sid, 6)
 
     utc_dt = datetime(year, month, day, hour, minute) - timedelta(hours=utc_offset)
-    asc_sid = sidereal["ascendant"]
 
     div_lagnas = {f"D{d}": SIGNS[get_div_sign(asc_sid, d)] for d in SUPPORTED_DIVISIONS}
     sign_mapping = {k: SIGNS[_sign(v)] for k, v in sidereal.items()}
-    lagna_sign = _sign(cusps[1])   # Whole Sign: use H1 cusp, not raw sidereal ASC
+    lagna_sign = _sign(asc_sid)
     house_mapping = {k: (((_sign(v)) - lagna_sign) % 12) + 1
                      for k, v in sidereal.items() if k != "ascendant"}
 
