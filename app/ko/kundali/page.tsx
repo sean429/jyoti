@@ -522,7 +522,7 @@ export default function KoKundaliPage() {
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer"
                                     className="px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
                                     style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.6)', color: '#e9d5ff' }}>
-                                    ⭐ 전체 5개 ₩10,000
+                                    ⭐ 전체 5개 <s style={{ opacity: 0.6, fontWeight: 400 }}>₩12,900</s> ₩10,000
                                   </a>
                                 )}
                               </div>

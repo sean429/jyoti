@@ -517,7 +517,7 @@ export default function ZhKundaliPage() {
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer"
                                     className="px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
                                     style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.6)', color: '#e9d5ff' }}>
-                                    ⭐ 全部5项 ₩10,000
+                                    ⭐ 全部5项 <s style={{ opacity: 0.6, fontWeight: 400 }}>₩12,900</s> ₩10,000
                                   </a>
                                 )}
                               </div>
