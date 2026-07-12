@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     themes = [...PREMIUM_THEME_IDS];
   } else {
     themes = THEME_KEYWORDS.filter(([re]) => re.test(optionText)).map(([, id]) => id);
-    if (!themes.length && amount >= 10000) themes = [...PREMIUM_THEME_IDS];
+    if (!themes.length && amount >= 9900) themes = [...PREMIUM_THEME_IDS];
   }
   if (!themes.length) {
     console.error('[groble-webhook] no theme matched:', contentId, optionText);
