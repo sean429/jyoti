@@ -1,28 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChartData } from '@/lib/vedic-calculations';
+
+interface Theme { name: string; desc: string; d2: number; premiumId?: string; }
 
 interface Props {
   chart: ChartData;
   birthInfo: { name: string; date: string; time: string; place: string; };
+  theme?: Theme;
+  premiumToken?: string;
 }
 
-export default function AIInterpretation({ chart, birthInfo }: Props) {
+export default function AIInterpretation({ chart, birthInfo, theme, premiumToken }: Props) {
   const [interpretation, setInterpretation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [generated, setGenerated] = useState(false);
+  const [lastThemeId, setLastThemeId] = useState<string>('');
+
+  const themeKey = theme ? theme.name + '-' + theme.d2 : 'general';
+  useEffect(() => {
+    if (themeKey !== lastThemeId && generated) { setGenerated(false); setInterpretation(''); }
+  }, [themeKey]);
 
   async function generate() {
     setLoading(true);
     setError('');
     setInterpretation('');
+    setLastThemeId(themeKey);
     try {
       const res = await fetch('/api/interpret', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart, birthInfo, lang: 'en' }),
+        body: JSON.stringify({ chart, birthInfo, lang: 'en', theme, premiumToken }),
       });
       const data = await res.json();
       if (data.error) setError(data.error);
@@ -102,12 +113,24 @@ export default function AIInterpretation({ chart, birthInfo }: Props) {
         <div className="text-center py-6">
           <div className="mb-4">
             <div className="text-4xl mb-3">?</div>
-            <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Powered by Gemini AI</p>
-            <p className="text-xs" style={{ color: 'rgba(156,163,175,0.6)' }}>
-              Get a detailed personalized reading based on your Kundali
-            </p>
+            {theme ? (
+              <>
+                <p className="text-sm font-cinzel mb-1" style={{ color: 'var(--gold-light)' }}>{theme.name}</p>
+                <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>{theme.desc}</p>
+                <p className="text-xs" style={{ color: 'rgba(156,163,175,0.6)' }}>
+                  {theme.d2 > 0 ? `Combined analysis of D1 Rashi and D${theme.d2} charts` : 'Analysis based on your D1 Rashi chart'}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Powered by Gemini AI</p>
+                <p className="text-xs" style={{ color: 'rgba(156,163,175,0.6)' }}>
+                  Get a detailed personalized reading based on your Kundali
+                </p>
+              </>
+            )}
           </div>
-          <button className="btn-gold" onClick={generate}>? Generate AI Reading ?</button>
+          <button className="btn-gold" onClick={generate}>{theme ? `? ${theme.name} AI Reading ?` : '? Generate AI Reading ?'}</button>
         </div>
       )}
       {loading && (

@@ -2,57 +2,56 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import BirthChartFormKo, { BirthInfo } from '@/components/BirthChartFormKo';
+import BirthChartFormZh, { BirthInfo } from '@/components/BirthChartFormZh';
 import KundaliChart from '@/components/KundaliChart';
 import PlanetTable from '@/components/PlanetTable';
 import DashaTable from '@/components/DashaTable';
-import AIInterpretationKo from '@/components/AIInterpretationKo';
+import AIInterpretationZh from '@/components/AIInterpretationZh';
 import { ChartData } from '@/lib/vedic-calculations';
 
-const SIGN_NAMES_KO = [
-  '메샤 (양자리)', '브리샤바 (황소자리)', '미투나 (쌍둥이자리)', '카르카 (게자리)',
-  '심하 (사자자리)', '칸야 (처녀자리)', '툴라 (천칭자리)', '브리쉬치카 (전갈자리)',
-  '다누 (궁수자리)', '마카라 (염소자리)', '쿰바 (물병자리)', '미나 (물고기자리)',
+const SIGN_NAMES_ZH = [
+  '白羊 (Mesha)', '金牛 (Vrishabha)', '双子 (Mithuna)', '巨蟹 (Karka)',
+  '狮子 (Simha)', '处女 (Kanya)', '天秤 (Tula)', '天蝎 (Vrishchika)',
+  '射手 (Dhanu)', '摩羯 (Makara)', '水瓶 (Kumbha)', '双鱼 (Meena)',
 ];
 
 const SIGN_SYMBOLS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
 
-const PLANET_NAMES_KO: Record<string, string> = {
-  sun:'태양(수리야)', moon:'달(찬드라)', mars:'화성(망갈라)', mercury:'수성(부다)',
-  jupiter:'목성(구루)', venus:'금성(슈크라)', saturn:'토성(샤니)', rahu:'라후', ketu:'케투',
+const PLANET_NAMES_ZH: Record<string, string> = {
+  sun:'太阳(苏利耶)', moon:'月亮(旃陀罗)', mars:'火星(芒格拉)', mercury:'水星(布达)',
+  jupiter:'木星(古鲁)', venus:'金星(舒克拉)', saturn:'土星(沙尼)', rahu:'罗睺', ketu:'计都',
 };
 
-// 15 divisional chart combination themes
 const THEMES = [
-  { id: 1,  name: '운명의 기본값',  d1: 1, d2: 9,  label: 'D1 + D9',  desc: '이 생의 근본 목적과 영혼의 전생 업보 패턴' },
-  { id: 2,  name: '배우자 인연',    d1: 1, d2: 9,  label: 'D1 + D9',  desc: '배우자가 될 사람의 기질, 인연의 깊이' },
-  { id: 3,  name: '자녀와 창조성', d1: 1, d2: 7,  label: 'D1 + D7',  desc: '자녀와의 연결, 창조적 재능' },
-  { id: 4,  name: '돈의 그릇',     d1: 1, d2: 2,  label: 'D1 + D2',  desc: '물질적 부와 자원의 흐름과 패턴' },
-  { id: 5,  name: '사업의 판',     d1: 1, d2: 10, label: 'D1 + D10', desc: '사회 속의 위치와 직업의 방향성' },
-  { id: 6,  name: '직업의 궤도',   d1: 1, d2: 10, label: 'D1 + D10', desc: '이 생의 업무적 역할과 직업의 깊은 방향' },
-  { id: 7,  name: '집과 뿌리',     d1: 1, d2: 4,  label: 'D1 + D4',  desc: '부동산, 집, 어머니와의 연결' },
-  { id: 8,  name: '부모와 가문',   d1: 1, d2: 12, label: 'D1 + D12', desc: '조상으로부터의 업, 부모의 영향' },
-  { id: 9,  name: '이동과 소유',   d1: 1, d2: 16, label: 'D1 + D16', desc: '차량, 여행, 사치와 편의의 영역' },
-  { id: 10, name: '공부와 전문성', d1: 1, d2: 24, label: 'D1 + D24', desc: '고등 교육, 전문 기술, 학문적 성취' },
-  { id: 11, name: '영적 방향',     d1: 1, d2: 20, label: 'D1 + D20', desc: '영적 성장, 명상, 해탈의 길' },
-  { id: 12, name: '타고난 무기',   d1: 1, d2: 27, label: 'D1 + D27', desc: '내면의 강점과 천부적인 재능과 특기' },
-  { id: 13, name: '반복되는 문제', d1: 1, d2: 30, label: 'D1 + D30', desc: '삶에서 반복되는 도전과 카르마 패턴' },
-  { id: 14, name: '모계 흐름',     d1: 1, d2: 40, label: 'D1 + D40', desc: '어머니 쪽 가계로부터 전해지는 업보' },
-  { id: 15, name: '부계 흐름',     d1: 1, d2: 45, label: 'D1 + D45', desc: '아버지 쪽 가계로부터 전해지는 업보' },
+  { id: 1,  name: '命运基础',   d1: 1, d2: 9,  label: 'D1 + D9',  desc: '此生根本目的与灵魂前世业力模式' },
+  { id: 2,  name: '伴侣缘分',   d1: 1, d2: 9,  label: 'D1 + D9',  desc: '未来伴侣的性格与缘分深度' },
+  { id: 3,  name: '子女创造力', d1: 1, d2: 7,  label: 'D1 + D7',  desc: '与子女的连结及创造性才能' },
+  { id: 4,  name: '财富格局',   d1: 1, d2: 2,  label: 'D1 + D2',  desc: '物质财富与资源的流动模式' },
+  { id: 5,  name: '事业舞台',   d1: 1, d2: 10, label: 'D1 + D10', desc: '在社会中的位置与职业方向' },
+  { id: 6,  name: '职业轨道',   d1: 1, d2: 10, label: 'D1 + D10', desc: '此生职业角色与深层职业方向' },
+  { id: 7,  name: '家园根基',   d1: 1, d2: 4,  label: 'D1 + D4',  desc: '房产、家庭与母亲的连结' },
+  { id: 8,  name: '父母家族',   d1: 1, d2: 12, label: 'D1 + D12', desc: '祖先业力与父母的影响' },
+  { id: 9,  name: '出行财物',   d1: 1, d2: 16, label: 'D1 + D16', desc: '车辆、旅行与物质享受' },
+  { id: 10, name: '学业专长',   d1: 1, d2: 24, label: 'D1 + D24', desc: '高等教育、专业技能与学术成就' },
+  { id: 11, name: '灵性方向',   d1: 1, d2: 20, label: 'D1 + D20', desc: '灵性成长、冥想与解脱之路' },
+  { id: 12, name: '天赋才能',   d1: 1, d2: 27, label: 'D1 + D27', desc: '内在优势与与生俱来的才华特长' },
+  { id: 13, name: '业力课题',   d1: 1, d2: 30, label: 'D1 + D30', desc: '生命中反复出现的挑战与业力模式' },
+  { id: 14, name: '母系传承',   d1: 1, d2: 40, label: 'D1 + D40', desc: '来自母系家族的业力传承' },
+  { id: 15, name: '父系传承',   d1: 1, d2: 45, label: 'D1 + D45', desc: '来自父系家族的业力传承' },
 ] as const;
 
 type Theme = typeof THEMES[number];
 
 // Premium paid themes — purchased on Groble, unlocked via /api/payment/claim (HMAC token)
-const PREMIUM_THEMES_KO = [
-  { id: 'career', name: '직업·재물운', icon: '💼', d2: 10, desc: '직업과 재물운을 D1+D10 차트 기반으로 집중 분석합니다. 직업적 재능, 성공 분야, 재물 흐름, 현재 다샤의 재물운을 구체적으로 알려주세요.' },
-  { id: 'love',   name: '연애·결혼운', icon: '💕', d2: 9,  desc: '연애와 결혼운을 D1+D9 차트 기반으로 집중 분석합니다. 인연 패턴, 배우자 기질, 관계 반복 문제, 좋은 인연이 오는 시기를 알려주세요.' },
-  { id: 'health', name: '건강운',      icon: '🌿', d2: 6,  desc: '건강운을 D1+D6 차트 기반으로 집중 분석합니다. 선천적으로 약한 부분, 주의 시기, 건강 유지를 위한 현실적인 조언을 알려주세요.' },
-  { id: 'yearly', name: '올해 운세',   icon: '🌟', d2: 0,  desc: '올해와 현재 다샤 기간의 운세를 집중 분석합니다. 이 시기의 성격, 유리한 선택, 피해야 할 것을 마하다샤와 안타르다샤 중심으로 알려주세요.' },
-  { id: 'family', name: '자녀·가족운', icon: '🏠', d2: 7,  desc: '자녀운과 가족 관계를 D1+D7 차트 기반으로 집중 분석합니다. 자녀 인연, 부모·형제 관계 패턴, 가족의 영향을 알려주세요.' },
+const PREMIUM_THEMES_ZH = [
+  { id: 'career', name: '职业财富运', icon: '💼', d2: 10, desc: '集中分析职业与财富运势。请基于D1+D10星盘，告诉我职业才能、成功领域、财富流动规律，以及当前大运时期的财富走向。' },
+  { id: 'love',   name: '爱情婚姻运', icon: '💕', d2: 9,  desc: '集中分析爱情与婚姻运势。请基于D1+D9星盘，告诉我缘分模式、伴侣特质、感情中反复出现的问题和良缘出现的时机。' },
+  { id: 'health', name: '健康运',     icon: '🌿', d2: 6,  desc: '集中分析健康运势。请基于D1+D6星盘，告诉我先天薄弱之处、需注意的时期，以及保持健康的实际建议。' },
+  { id: 'yearly', name: '今年运势',   icon: '🌟', d2: 0,  desc: '集中分析今年和当前大运时期的运势。请以大运（Mahadasha）和中运（Antardasha）为中心，告诉我这个时期的特点、有利选择和需避免的事项。' },
+  { id: 'family', name: '子女家庭运', icon: '🏠', d2: 7,  desc: '集中分析子女运与家庭关系。请基于D1+D7星盘，告诉我子女缘分、与父母兄弟的关系模式以及家庭的影响。' },
 ] as const;
 
-type PremiumTheme = typeof PREMIUM_THEMES_KO[number];
+type PremiumTheme = typeof PREMIUM_THEMES_ZH[number];
 
 // Groble product page links (set in Vercel env, inlined at build time)
 const GROBLE_URLS = {
@@ -61,7 +60,7 @@ const GROBLE_URLS = {
   all: process.env.NEXT_PUBLIC_GROBLE_ALL_URL ?? '',
 };
 
-export default function KoKundaliPage() {
+export default function ZhKundaliPage() {
   const [chart, setChart] = useState<ChartData | null>(null);
   const [birthInfo, setBirthInfo] = useState<BirthInfo | null>(null);
   const [loading, setLoading] = useState(false);
@@ -103,7 +102,7 @@ export default function KoKundaliPage() {
       const res = await fetch('/api/payment/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, lang: 'ko' }),
+        body: JSON.stringify({ code, lang: 'zh' }),
       });
       const data = await res.json();
       if (data.token) {
@@ -114,8 +113,8 @@ export default function KoKundaliPage() {
         setUnlockedThemes(data.themes);
         setJustUnlocked(true);
         setClaimCode('');
-      } else setPaymentError(data.error ?? '결제 내역을 찾지 못했습니다.');
-    } catch { setPaymentError('확인에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
+      } else setPaymentError(data.error ?? '未找到付款记录。');
+    } catch { setPaymentError('验证失败，请稍后重试。'); }
     setPaymentLoading(false);
   }
 
@@ -138,7 +137,7 @@ export default function KoKundaliPage() {
         setActiveTab('chart');
         setTimeout(() => document.getElementById('chart-section')?.scrollIntoView({ behavior: 'smooth' }), 100);
       }
-    } catch { setError('차트 계산에 실패했습니다. 다시 시도해주세요.'); }
+    } catch { setError('星盘计算失败，请重试。'); }
     setLoading(false);
   }
 
@@ -158,29 +157,31 @@ export default function KoKundaliPage() {
           className="sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/ko" className="font-cinzel-deco text-base font-bold text-gold hover:opacity-80">
+              <Link href="/zh" className="font-cinzel-deco text-base font-bold text-gold hover:opacity-80">
                 ✦ Jyoti
               </Link>
               <span style={{ color: 'rgba(201,168,76,0.3)' }}>|</span>
-              <span className="font-cinzel text-sm" style={{ color: 'var(--text-muted)' }}>베딕 차트</span>
+              <span className="font-cinzel text-sm" style={{ color: 'var(--text-muted)' }}>吠陀星盘</span>
             </div>
-            <Link href="/en/kundali" className="text-xs px-3 py-1.5 rounded-lg"
-              style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              🌐 English
-            </Link>
-            <Link href="/zh/kundali" className="text-xs px-3 py-1.5 rounded-lg"
-              style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              🌐 中文
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/ko/kundali" className="text-xs px-3 py-1.5 rounded-lg"
+                style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                🌐 한국어
+              </Link>
+              <Link href="/en/kundali" className="text-xs px-3 py-1.5 rounded-lg"
+                style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                🌐 English
+              </Link>
+            </div>
           </div>
         </nav>
 
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-10">
           <div className="text-center mb-10">
             <p className="text-2xl mb-2">✦</p>
-            <h1 className="font-cinzel-deco text-2xl md:text-4xl font-bold text-gold mb-3">내 별자리 차트</h1>
+            <h1 className="font-cinzel-deco text-2xl md:text-4xl font-bold text-gold mb-3">我的命盘</h1>
             <p className="font-cormorant text-lg" style={{ color: 'rgba(240,235,224,0.6)', fontStyle: 'italic' }}>
-              태어난 순간 하늘의 지도가 당신의 이야기를 담고 있습니다
+              出生那一刻，天空的地图已将您的故事收藏其中
             </p>
           </div>
 
@@ -190,9 +191,9 @@ export default function KoKundaliPage() {
               <div className="card p-6 sticky top-24">
                 <h2 className="font-cinzel font-bold text-base text-gold mb-5 pb-3"
                   style={{ borderBottom: '1px solid rgba(201,168,76,0.2)' }}>
-                  ✦ 출생 정보 입력
+                  ✦ 出生信息输入
                 </h2>
-                <BirthChartFormKo onSubmit={handleSubmit} loading={loading} />
+                <BirthChartFormZh onSubmit={handleSubmit} loading={loading} />
                 {error && (
                   <div className="mt-4 p-3 rounded-lg text-sm text-center"
                     style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
@@ -207,9 +208,9 @@ export default function KoKundaliPage() {
               {!chart && !loading && (
                 <div className="card p-12 text-center h-64 flex flex-col items-center justify-center">
                   <div className="text-5xl mb-4 pulse-gold" style={{ color: 'rgba(201,168,76,0.3)' }}>✦</div>
-                  <p className="font-cinzel text-sm" style={{ color: 'var(--text-muted)' }}>출생 정보를 입력해 주세요</p>
+                  <p className="font-cinzel text-sm" style={{ color: 'var(--text-muted)' }}>请输入出生信息</p>
                   <p className="text-xs mt-2" style={{ color: 'rgba(156,163,175,0.5)' }}>
-                    좌측 폼에서 생년월일과 장소를 입력하시면 차트가 생성됩니다
+                    在左侧表单输入生日与出生地，即可生成命盘
                   </p>
                 </div>
               )}
@@ -225,8 +226,8 @@ export default function KoKundaliPage() {
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center text-3xl">🔮</div>
                   </div>
-                  <p className="font-cinzel font-bold text-base text-gold">별자리 계산 중</p>
-                  <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>당신만의 우주적 청사진을 그립니다...</p>
+                  <p className="font-cinzel font-bold text-base text-gold">星座计算中</p>
+                  <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>正在绘制您专属的宇宙蓝图...</p>
                 </div>
               )}
 
@@ -235,9 +236,9 @@ export default function KoKundaliPage() {
                   {/* Summary cards */}
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { label: '라그나', sublabel: '어센던트', value: SIGN_NAMES_KO[chart.lagnaSign]?.split(' ')[0], symbol: SIGN_SYMBOLS[chart.lagnaSign], color: '#22d3ee' },
-                      { label: '달',   sublabel: '달 별자리', value: moonPlanet?.sign, symbol: SIGN_SYMBOLS[moonPlanet?.signIndex ?? 0], color: '#c0c0c0' },
-                      { label: '태양', sublabel: '태양 별자리', value: sunPlanet?.sign, symbol: SIGN_SYMBOLS[sunPlanet?.signIndex ?? 0], color: '#f59e0b' },
+                      { label: '命宫', sublabel: '上升星座', value: SIGN_NAMES_ZH[chart.lagnaSign]?.split(' ')[0], symbol: SIGN_SYMBOLS[chart.lagnaSign], color: '#22d3ee' },
+                      { label: '月亮', sublabel: '月亮星座', value: moonPlanet?.sign, symbol: SIGN_SYMBOLS[moonPlanet?.signIndex ?? 0], color: '#c0c0c0' },
+                      { label: '太阳', sublabel: '太阳星座', value: sunPlanet?.sign, symbol: SIGN_SYMBOLS[sunPlanet?.signIndex ?? 0], color: '#f59e0b' },
                     ].map(card => (
                       <div key={card.label} className="card p-4 text-center">
                         <p className="text-xs font-cinzel mb-1" style={{ color: card.color }}>{card.label}</p>
@@ -252,19 +253,19 @@ export default function KoKundaliPage() {
                     <div className="card p-4">
                       <div className="flex flex-wrap gap-4 items-center">
                         <div>
-                          <p className="text-xs font-cinzel mb-0.5" style={{ color: 'var(--gold-dim)' }}>달의 나크샤트라</p>
+                          <p className="text-xs font-cinzel mb-0.5" style={{ color: 'var(--gold-dim)' }}>月亮Nakshatra</p>
                           <p className="font-cinzel font-bold text-base" style={{ color: 'var(--gold-light)' }}>{moonPlanet.nakshatra}</p>
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>파다 {moonPlanet.pada} / 절대주: {moonPlanet.nakshatraLord}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Pada {moonPlanet.pada} / 守护星: {moonPlanet.nakshatraLord}</p>
                         </div>
                         <div style={{ width: '1px', height: '40px', background: 'rgba(201,168,76,0.2)' }} />
                         <div>
-                          <p className="text-xs font-cinzel mb-0.5" style={{ color: 'var(--gold-dim)' }}>아야남사</p>
+                          <p className="text-xs font-cinzel mb-0.5" style={{ color: 'var(--gold-dim)' }}>月差</p>
                           <p className="font-cinzel font-bold text-base" style={{ color: 'var(--gold-light)' }}>{chart.ayanamsa?.toFixed(4)}°</p>
-                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>라히리 (시데레알)</p>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>拉希里（恒星）</p>
                         </div>
                         <div style={{ width: '1px', height: '40px', background: 'rgba(201,168,76,0.2)' }} />
                         <div>
-                          <p className="text-xs font-cinzel mb-0.5" style={{ color: 'var(--gold-dim)' }}>장소</p>
+                          <p className="text-xs font-cinzel mb-0.5" style={{ color: 'var(--gold-dim)' }}>出生地</p>
                           <p className="font-cinzel text-sm" style={{ color: 'var(--text)' }}>{birthInfo.place.split(',').slice(0,2).join(',')}</p>
                           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{birthInfo.latitude.toFixed(2)}N, {birthInfo.longitude.toFixed(2)}E</p>
                         </div>
@@ -275,10 +276,10 @@ export default function KoKundaliPage() {
                   {/* Tabs */}
                   <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.1)' }}>
                     {([
-                      { id: 'chart',   label: '차트 보기' },
-                      { id: 'planets', label: '행성 보기' },
-                      { id: 'dasha',   label: '대 운세' },
-                      { id: 'ai',      label: '✨ AI 해석' },
+                      { id: 'chart',   label: '星盘图' },
+                      { id: 'planets', label: '行星' },
+                      { id: 'dasha',   label: '大运' },
+                      { id: 'ai',      label: '✨ AI解读' },
                     ] as const).map(tab => (
                       <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                         className="flex-1 py-2 px-2 rounded-lg text-sm font-cinzel transition-all"
@@ -293,13 +294,11 @@ export default function KoKundaliPage() {
                   </div>
 
                   <div className="card p-6">
-                    {/* CHART TAB */}
                     {activeTab === 'chart' && (
                       <div>
-                        {/* Theme selector */}
                         <div className="mb-6">
                           <p className="text-xs font-cinzel mb-3" style={{ color: 'var(--gold-dim)', letterSpacing: '1px' }}>
-                            VARGA CHART ∘ 분할 차트 선택
+                            VARGA CHART ∘ 分割星盘选择
                           </p>
                           <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                             <button
@@ -310,7 +309,7 @@ export default function KoKundaliPage() {
                                 border: !selectedTheme ? '1px solid rgba(201,168,76,0.5)' : '1px solid rgba(201,168,76,0.12)',
                                 color: !selectedTheme ? 'var(--gold-light)' : 'var(--text-muted)',
                               }}>
-                              D1<br /><span style={{ fontSize: '9px' }}>라시 차트</span>
+                              D1<br /><span style={{ fontSize: '9px' }}>命盘</span>
                             </button>
                             {THEMES.map(t => (
                               <button
@@ -333,30 +332,29 @@ export default function KoKundaliPage() {
                           )}
                         </div>
 
-                        {/* Charts */}
                         {!selectedTheme ? (
                           <div>
                             <h3 className="font-cinzel font-bold text-sm text-gold mb-4">
-                              <span className="ornament">D1 ∘ 라시 차트 (본명)</span>
+                              <span className="ornament">D1 ∘ 命盘（Rashi）</span>
                             </h3>
                             <div className="flex flex-col md:flex-row items-start gap-6">
                               <div className="flex-shrink-0 mx-auto md:mx-0">
                                 <KundaliChart chart={chart} size={300} division={1} label="D1 RASHI" />
                               </div>
                               <div className="flex-1">
-                                <p className="text-xs font-cinzel mb-3" style={{ color: 'var(--gold-dim)' }}>행성 위치 (D1)</p>
+                                <p className="text-xs font-cinzel mb-3" style={{ color: 'var(--gold-dim)' }}>行星位置 (D1)</p>
                                 <div className="space-y-1.5">
                                   {chart.planets.map(p => (
                                     <div key={p.id} className="flex items-center gap-2 text-xs">
-                                      <span className="w-28 font-cinzel" style={{ color: COLORS[p.id] }}>{PLANET_NAMES_KO[p.id] || p.name}</span>
+                                      <span className="w-28 font-cinzel" style={{ color: COLORS[p.id] }}>{PLANET_NAMES_ZH[p.id] || p.name}</span>
                                       <span style={{ color: 'var(--text-muted)' }}>{p.sign}</span>
                                       <span style={{ color: 'rgba(156,163,175,0.5)' }}>H{p.house}</span>
-                                      {p.isRetrograde && <span style={{ color: '#a78bfa', fontSize:'10px' }}>역행</span>}
+                                      {p.isRetrograde && <span style={{ color: '#a78bfa', fontSize:'10px' }}>逆行</span>}
                                     </div>
                                   ))}
                                   <div className="flex items-center gap-2 text-xs mt-2 pt-2" style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
-                                    <span className="w-28 font-cinzel" style={{ color: '#22d3ee' }}>라그나</span>
-                                    <span style={{ color: 'var(--text-muted)' }}>{SIGN_NAMES_KO[chart.lagnaSign]}</span>
+                                    <span className="w-28 font-cinzel" style={{ color: '#22d3ee' }}>命宫 (Lagna)</span>
+                                    <span style={{ color: 'var(--text-muted)' }}>{SIGN_NAMES_ZH[chart.lagnaSign]}</span>
                                   </div>
                                 </div>
                               </div>
@@ -368,9 +366,8 @@ export default function KoKundaliPage() {
                               <span className="ornament">{selectedTheme.name} · {selectedTheme.label}</span>
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              {/* D1 chart */}
                               <div>
-                                <p className="text-xs font-cinzel mb-2 text-center" style={{ color: 'var(--gold-dim)' }}>D1 · 라시 (기본차트)</p>
+                                <p className="text-xs font-cinzel mb-2 text-center" style={{ color: 'var(--gold-dim)' }}>D1 · 命盘（基础）</p>
                                 <KundaliChart chart={chart} size={260} division={1} label="D1" />
                                 <div className="mt-2 space-y-0.5">
                                   {chart.planets.slice(0,5).map(p => (
@@ -381,13 +378,12 @@ export default function KoKundaliPage() {
                                   ))}
                                 </div>
                               </div>
-                              {/* Dx chart */}
                               <div>
                                 <p className="text-xs font-cinzel mb-2 text-center" style={{ color: 'var(--gold-dim)' }}>
                                   D{selectedTheme.d2} · {
-                                    ({2:'호라',3:'드레카나',4:'차투르탐샤',7:'삽타암샤',9:'나밤샤',10:'다샴샤',
-                                      12:'드와다샴샤',16:'쇼다샴샤',20:'빔샴샤',24:'차투르빔샴샤',
-                                      27:'삽타빔샴샤',30:'트림샴샤',40:'찰리샴샤',45:'악샤베담샤'} as Record<number,string>)[selectedTheme.d2] || `D${selectedTheme.d2}`
+                                    ({2:'Hora',3:'Drekkana',4:'Chaturthamsha',7:'Saptamsha',9:'Navamsha',10:'Dashamsha',
+                                      12:'Dwadashamsha',16:'Shodashamsha',20:'Vimshamsha',24:'Chaturvimshamsha',
+                                      27:'Saptavimshamsha',30:'Trimshamsha',40:'Khavedamsha',45:'Akshavedamsha'} as Record<number,string>)[selectedTheme.d2] || `D${selectedTheme.d2}`
                                   }
                                 </p>
                                 <KundaliChart chart={chart} size={260} division={selectedTheme.d2} label={`D${selectedTheme.d2}`} />
@@ -412,7 +408,7 @@ export default function KoKundaliPage() {
                     {activeTab === 'planets' && (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-5">
-                          <span className="ornament">행성 상세 정보</span>
+                          <span className="ornament">行星详细信息</span>
                         </h3>
                         <PlanetTable chart={chart} />
                       </div>
@@ -421,7 +417,7 @@ export default function KoKundaliPage() {
                     {activeTab === 'dasha' && (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-5">
-                          <span className="ornament">빔쇼타리 대운 (마하다샤)</span>
+                          <span className="ornament">维姆肖塔里大运（Mahadasha）</span>
                         </h3>
                         <DashaTable dashas={chart.dashas} />
                       </div>
@@ -430,20 +426,19 @@ export default function KoKundaliPage() {
                     {activeTab === 'ai' && (() => {
                       const question = customQuestion.trim();
                       const aiTheme = activePremium
-                        ? { name: activePremium.name, desc: activePremium.desc + (question ? ' 추가 질문: ' + question : ''), d2: activePremium.d2, premiumId: activePremium.id }
+                        ? { name: activePremium.name, desc: activePremium.desc + (question ? ' 补充问题: ' + question : ''), d2: activePremium.d2, premiumId: activePremium.id }
                         : selectedTheme
-                          ? { name: selectedTheme.name, desc: selectedTheme.desc + (question ? ' 추가 질문: ' + question : ''), d2: selectedTheme.d2 }
+                          ? { name: selectedTheme.name, desc: selectedTheme.desc + (question ? ' 补充问题: ' + question : ''), d2: selectedTheme.d2 }
                           : question
-                            ? { name: '나의 질문', desc: question, d2: 0 }
+                            ? { name: '我的问题', desc: question, d2: 0 }
                             : undefined;
                       return (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-4">
-                          <span className="ornament">AI 운세 해석 보기</span>
+                          <span className="ornament">AI命盘解读</span>
                         </h3>
-                        {/* Theme picker for AI */}
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
-                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>해석 주제 선택 (특정 영역 AI 운세 보기)</p>
+                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>选择解读主题（查看特定领域AI解读）</p>
                           <div className="flex flex-wrap gap-1.5">
                             <button
                               onClick={() => { setSelectedTheme(null); setActivePremium(null); }}
@@ -453,7 +448,7 @@ export default function KoKundaliPage() {
                                 border: '1px solid rgba(201,168,76,0.2)',
                                 color: !selectedTheme && !activePremium ? 'var(--gold-light)' : 'var(--text-muted)',
                               }}>
-                              종합 운세
+                              综合解读
                             </button>
                             {THEMES.map(t => (
                               <button key={t.id}
@@ -473,11 +468,11 @@ export default function KoKundaliPage() {
                         {/* Premium themes */}
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
-                            <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 프리미엄 심층 해석</p>
-                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>단품 ₩3,900 · 전체 ₩10,000</p>
+                            <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 高级深度解读</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>单项 ₩3,900 · 全部 ₩10,000</p>
                           </div>
                           <div className="flex flex-wrap gap-1.5 mb-2">
-                            {PREMIUM_THEMES_KO.map(t => {
+                            {PREMIUM_THEMES_ZH.map(t => {
                               const unlocked = unlockedThemes.includes(t.id);
                               const active = activePremium?.id === t.id;
                               return (
@@ -501,47 +496,47 @@ export default function KoKundaliPage() {
                               );
                             })}
                           </div>
-                          {unlockedThemes.length < PREMIUM_THEMES_KO.length && (
+                          {unlockedThemes.length < PREMIUM_THEMES_ZH.length && (
                             <div className="mb-2">
                               <div className="flex flex-wrap gap-1.5 mb-2">
                                 {GROBLE_URLS.single && (
                                   <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer"
                                     className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
                                     style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
-                                    테마 1개 ₩3,900
+                                    单项主题 ₩3,900
                                   </a>
                                 )}
                                 {GROBLE_URLS.trio && (
                                   <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer"
                                     className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
                                     style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
-                                    테마 3개 ₩10,000
+                                    3项主题 ₩10,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.all && (
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer"
                                     className="px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
                                     style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.6)', color: '#e9d5ff' }}>
-                                    ⭐ 전체 5개 ₩10,000
+                                    ⭐ 全部5项 ₩10,000
                                   </a>
                                 )}
                               </div>
                               <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                                결제 완료 후, 결제하신 이메일이나 주문번호를 아래에 입력하면 바로 열립니다
+                                完成支付后，在下方输入付款时使用的邮箱或订单号即可解锁
                               </p>
                               <div className="flex gap-1.5 flex-wrap">
                                 <input
                                   value={claimCode}
                                   onChange={e => setClaimCode(e.target.value)}
                                   onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
-                                  placeholder="결제하신 이메일 또는 주문번호"
+                                  placeholder="付款邮箱或订单号"
                                   className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
                                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(167,139,250,0.25)', color: 'var(--text)' }}
                                 />
                                 <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
                                   className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
                                   style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
-                                  {paymentLoading ? '확인 중...' : '🔓 해석 열기'}
+                                  {paymentLoading ? '验证中...' : '🔓 解锁解读'}
                                 </button>
                               </div>
                             </div>
@@ -550,34 +545,34 @@ export default function KoKundaliPage() {
                             <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{paymentError}</p>
                           )}
                           {justUnlocked && unlockedThemes.length > 0 && (
-                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 결제 확인 완료! 테마를 눌러 해석을 확인하세요</p>
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 支付确认成功！点击主题即可查看解读</p>
                           )}
                           {unlockedThemes.length > 0 && (
                             <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                              🔓 표시된 테마는 결제 완료 — 눌러서 해석을 확인하세요 (열람 24시간, 이후 같은 이메일로 다시 열 수 있어요)
+                              🔓 标记的主题已完成支付 — 点击即可查看解读（本次有效24小时，之后可用同一邮箱再次解锁）
                             </p>
                           )}
                         </div>
 
                         {/* Custom question (free) */}
                         <div className="mb-4">
-                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>나니마에게 직접 묻고 싶은 것 (선택)</p>
+                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>想直接问Nani Ma的问题（可选）</p>
                           <textarea
                             value={customQuestion}
                             onChange={e => setCustomQuestion(e.target.value)}
                             maxLength={500}
                             rows={2}
-                            placeholder="예: 내년에 이직해도 괜찮을까요? 지금 하는 공부를 계속하는 게 맞을까요?"
+                            placeholder="例如：明年换工作合适吗？现在学的东西值得坚持吗？"
                             className="w-full p-3 rounded-lg text-sm resize-none"
                             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
                           />
                         </div>
 
-                        <AIInterpretationKo
+                        <AIInterpretationZh
                           chart={chart}
                           birthInfo={{
                             name: birthInfo.name,
-                            date: `${birthInfo.year}년 ${birthInfo.month}월 ${birthInfo.day}일`,
+                            date: `${birthInfo.year}年${birthInfo.month}月${birthInfo.day}日`,
                             time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
                             place: birthInfo.place,
                           }}
@@ -597,7 +592,7 @@ export default function KoKundaliPage() {
         <footer style={{ borderTop: '1px solid rgba(201,168,76,0.1)', background: 'rgba(8,8,24,0.8)', marginTop: '4rem' }}>
           <div className="max-w-6xl mx-auto px-6 py-6 text-center">
             <p className="text-xs" style={{ color: 'rgba(156,163,175,0.4)' }}>
-              Jyoti · 베딕 점성술을 통한 별빛의 언어 · 이 해석은 영적인 탐색을 위한 것입니다
+              Jyoti · 吠陀占星中的星光语言 · 本解读仅供灵性探索参考
             </p>
           </div>
         </footer>

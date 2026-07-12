@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import BirthChartForm, { BirthInfo } from '@/components/BirthChartForm';
 import KundaliChart from '@/components/KundaliChart';
@@ -15,12 +15,80 @@ const SIGN_NAMES = [
 ];
 const SIGN_SYMBOLS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
 
+// Premium paid themes — purchased on Groble, unlocked via /api/payment/claim (HMAC token)
+const PREMIUM_THEMES_EN = [
+  { id: 'career', name: 'Career & Wealth', icon: '💼', d2: 10, desc: 'Deep-dive into career and wealth. Based on D1+D10, reveal my professional talents, success areas, wealth patterns, and money flow in my current dasha.' },
+  { id: 'love',   name: 'Love & Marriage', icon: '💕', d2: 9,  desc: 'Deep-dive into love and marriage. Based on D1+D9, reveal my relationship patterns, partner qualities, recurring issues, and timing for good connections.' },
+  { id: 'health', name: 'Health',          icon: '🌿', d2: 6,  desc: 'Deep-dive into health. Based on D1+D6, reveal my constitutional weaknesses, vulnerable periods, and practical advice for staying well.' },
+  { id: 'yearly', name: "This Year's Fortune", icon: '🌟', d2: 0, desc: 'Focus on this year and my current dasha period. Centered on Mahadasha and Antardasha, what is the nature of this time, what choices are favored, what should I avoid?' },
+  { id: 'family', name: 'Children & Family', icon: '🏠', d2: 7, desc: 'Deep-dive into children and family. Based on D1+D7, reveal child connections, relationship patterns with parents and siblings, and family influences.' },
+] as const;
+
+type PremiumTheme = typeof PREMIUM_THEMES_EN[number];
+
+// Groble product page links (set in Vercel env, inlined at build time)
+const GROBLE_URLS = {
+  single: process.env.NEXT_PUBLIC_GROBLE_SINGLE_URL ?? '',
+  trio: process.env.NEXT_PUBLIC_GROBLE_TRIO_URL ?? '',
+  all: process.env.NEXT_PUBLIC_GROBLE_ALL_URL ?? '',
+};
+
 export default function EnKundaliPage() {
   const [chart, setChart] = useState<ChartData | null>(null);
   const [birthInfo, setBirthInfo] = useState<BirthInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'chart'|'planets'|'dasha'|'ai'>('chart');
+  const [premiumToken, setPremiumToken] = useState('');
+  const [unlockedThemes, setUnlockedThemes] = useState<string[]>([]);
+  const [claimCode, setClaimCode] = useState('');
+  const [activePremium, setActivePremium] = useState<PremiumTheme | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [justUnlocked, setJustUnlocked] = useState(false);
+
+  // Restore premium token from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('jyoti_premium_token');
+    const savedThemes = localStorage.getItem('jyoti_premium_themes');
+    const savedExp = Number(localStorage.getItem('jyoti_premium_exp') ?? 0);
+    if (saved && savedThemes && savedExp > Date.now()) {
+      setPremiumToken(saved);
+      setUnlockedThemes(savedThemes.split(','));
+    } else if (saved) {
+      localStorage.removeItem('jyoti_premium_token');
+      localStorage.removeItem('jyoti_premium_themes');
+      localStorage.removeItem('jyoti_premium_exp');
+    }
+  }, []);
+
+  // After paying on Groble, the buyer enters their order number or email here;
+  // the server matches it against webhook-recorded purchases and issues a token.
+  async function handleClaim() {
+    const code = claimCode.trim();
+    if (!code) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/payment/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, lang: 'en' }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem('jyoti_premium_token', data.token);
+        localStorage.setItem('jyoti_premium_themes', data.themes.join(','));
+        localStorage.setItem('jyoti_premium_exp', String(data.exp));
+        setPremiumToken(data.token);
+        setUnlockedThemes(data.themes);
+        setJustUnlocked(true);
+        setClaimCode('');
+      } else setPaymentError(data.error ?? 'No payment found.');
+    } catch { setPaymentError('Verification failed. Please try again.'); }
+    setPaymentLoading(false);
+  }
 
   async function handleSubmit(info: BirthInfo) {
     setLoading(true); setError(''); setChart(null); setBirthInfo(info);
@@ -49,6 +117,9 @@ export default function EnKundaliPage() {
             </div>
             <Link href="/ko/kundali" className="text-xs px-3 py-1.5 rounded-lg" style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
               🌐 한국어
+            </Link>
+            <Link href="/zh/kundali" className="text-xs px-3 py-1.5 rounded-lg" style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              🌐 中文
             </Link>
           </div>
         </nav>
@@ -160,12 +231,128 @@ export default function EnKundaliPage() {
                     )}
                     {activeTab === 'planets' && <div><h3 className="font-cinzel font-bold text-sm text-gold mb-5"><span className="ornament">Planetary Positions</span></h3><PlanetTable chart={chart} /></div>}
                     {activeTab === 'dasha' && <div><h3 className="font-cinzel font-bold text-sm text-gold mb-5"><span className="ornament">Vimshottari Dasha</span></h3><DashaTable dashas={chart.dashas} /></div>}
-                    {activeTab === 'ai' && (
+                    {activeTab === 'ai' && (() => {
+                      const question = customQuestion.trim();
+                      const aiTheme = activePremium
+                        ? { name: activePremium.name, desc: activePremium.desc + (question ? ' Additional question: ' + question : ''), d2: activePremium.d2, premiumId: activePremium.id }
+                        : question
+                          ? { name: 'My Question', desc: question, d2: 0 }
+                          : undefined;
+                      return (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-5"><span className="ornament">AI Vedic Reading</span></h3>
-                        <AIInterpretation chart={chart} birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }} />
+
+                        {/* Premium themes */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 Premium Deep Readings</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>₩3,900 each · all 5 for ₩10,000</p>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {PREMIUM_THEMES_EN.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    if (unlocked) {
+                                      setActivePremium(active ? null : t);
+                                    } else if (GROBLE_URLS.single) {
+                                      window.open(GROBLE_URLS.single, '_blank');
+                                    }
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(167,139,250,0.25)' : 'transparent',
+                                    border: active ? '1px solid rgba(167,139,250,0.5)' : '1px solid rgba(167,139,250,0.25)',
+                                    color: active || unlocked ? '#c4b5fd' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {unlockedThemes.length < PREMIUM_THEMES_EN.length && (
+                            <div className="mb-2">
+                              <div className="flex flex-wrap gap-1.5 mb-2">
+                                {GROBLE_URLS.single && (
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer"
+                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                                    style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
+                                    1 theme ₩3,900
+                                  </a>
+                                )}
+                                {GROBLE_URLS.trio && (
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer"
+                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                                    style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
+                                    3 themes ₩10,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.all && (
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer"
+                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                                    style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.6)', color: '#e9d5ff' }}>
+                                    ⭐ All 5 ₩10,000
+                                  </a>
+                                )}
+                              </div>
+                              <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
+                                After paying, enter the email or order number you used below to unlock instantly
+                              </p>
+                              <div className="flex gap-1.5 flex-wrap">
+                                <input
+                                  value={claimCode}
+                                  onChange={e => setClaimCode(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
+                                  placeholder="Payment email or order number"
+                                  className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
+                                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(167,139,250,0.25)', color: 'var(--text)' }}
+                                />
+                                <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                                  style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
+                                  {paymentLoading ? 'Checking...' : '🔓 Unlock'}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {paymentError && (
+                            <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{paymentError}</p>
+                          )}
+                          {justUnlocked && unlockedThemes.length > 0 && (
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ Payment confirmed! Tap a theme to view its reading</p>
+                          )}
+                          {unlockedThemes.length > 0 && (
+                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
+                              🔓 marked themes are paid — tap one to view its reading (24h per unlock; re-enter your email anytime to unlock again)
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Custom question (free) */}
+                        <div className="mb-4">
+                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>Ask Nani Ma directly (optional)</p>
+                          <textarea
+                            value={customQuestion}
+                            onChange={e => setCustomQuestion(e.target.value)}
+                            maxLength={500}
+                            rows={2}
+                            placeholder="e.g. Is next year a good time to change jobs? Should I keep pursuing my current studies?"
+                            className="w-full p-3 rounded-lg text-sm resize-none"
+                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
+                          />
+                        </div>
+
+                        <AIInterpretation
+                          chart={chart}
+                          birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
+                          theme={aiTheme}
+                          premiumToken={premiumToken || undefined}
+                        />
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               )}

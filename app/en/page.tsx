@@ -27,6 +27,10 @@ export default function EnHomePage() {
                 style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
                 🌐 한국어
               </Link>
+              <Link href="/zh" className="text-xs px-3 py-1.5 rounded-lg"
+                style={{ color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                🌐 中文
+              </Link>
               <Link href="/en/kundali">
                 <span className="btn-gold text-sm" style={{ display: 'inline-block', padding: '0.5rem 1.25rem' }}>
                   Get Your Kundali

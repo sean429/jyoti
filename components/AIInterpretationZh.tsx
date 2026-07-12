@@ -12,7 +12,7 @@ interface Props {
   premiumToken?: string;
 }
 
-export default function AIInterpretationKo({ chart, birthInfo, theme, premiumToken }: Props) {
+export default function AIInterpretationZh({ chart, birthInfo, theme, premiumToken }: Props) {
   const [interpretation, setInterpretation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,12 +29,12 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
     try {
       const res = await fetch('/api/interpret', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart, birthInfo, lang: 'ko', theme, premiumToken }),
+        body: JSON.stringify({ chart, birthInfo, lang: 'zh', theme, premiumToken }),
       });
       const data = await res.json();
       if (data.error) setError(data.error);
       else { setInterpretation(data.interpretation); setGenerated(true); }
-    } catch { setError('AI 해석 요청에 실패했습니다. 다시 시도해주세요.'); }
+    } catch { setError('连接失败，请重试。'); }
     setLoading(false);
   }
 
@@ -88,7 +88,7 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
     return elements;
   }
 
-  const themeBtn = theme ? '✨ ' + theme.name + ' AI 해석 받기' : '✨ AI 종합 운세 해석 받기';
+  const themeBtn = theme ? '✨ ' + theme.name + ' AI解读' : '✨ AI综合命盘解读';
 
   return (
     <div>
@@ -101,14 +101,14 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
                 <p className='text-sm font-cinzel mb-1' style={{ color: 'var(--gold-light)' }}>{theme.name}</p>
                 <p className='text-xs mb-3' style={{ color: 'var(--text-muted)' }}>{theme.desc}</p>
                 <p className='text-xs' style={{ color: 'rgba(156,163,175,0.6)' }}>
-                  {theme.d2 > 0 ? `D1 라시 차트와 D${theme.d2} 차트를 결합 분석합니다` : 'D1 라시 차트를 기반으로 분석합니다'}
+                  {theme.d2 > 0 ? `结合D1命盘与D${theme.d2}星盘进行分析` : '基于D1命盘进行分析'}
                 </p>
               </>
             ) : (
               <>
-                <p className='text-sm mb-1' style={{ color: 'var(--text-muted)' }}>Gemini AI가 베딕 차트를 해석합니다</p>
+                <p className='text-sm mb-1' style={{ color: 'var(--text-muted)' }}>AI将为您解读吠陀命盘</p>
                 <p className='text-xs' style={{ color: 'rgba(156,163,175,0.6)' }}>
-                  성격, 운명, 대운, 나크샤트라 기반으로 분석합니다
+                  基于性格、命运、大运与Nakshatra进行综合分析
                 </p>
               </>
             )}
@@ -127,34 +127,34 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
             </svg>
             <div className='absolute inset-0 flex items-center justify-center text-2xl'>🔮</div>
           </div>
-          <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>별자리의 언어를 해석하는 중...</p>
-          <p className='text-xs mt-1' style={{ color: 'var(--text-muted)' }}>{birthInfo.name}님의 우주적 청사진을 풀어냅니다</p>
+          <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>正在解读星盘语言...</p>
+          <p className='text-xs mt-1' style={{ color: 'var(--text-muted)' }}>正在解析{birthInfo.name}的宇宙蓝图</p>
         </div>
       )}
       {error && (
         <div className='p-4 rounded-xl text-sm text-center'
           style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}>
-          <p className='font-semibold mb-1'>해석을 불러올 수 없습니다</p>
+          <p className='font-semibold mb-1'>无法获取解读</p>
           <p style={{ color: 'rgba(252,165,165,0.7)' }}>{error}</p>
           <button className='mt-3 px-4 py-1.5 rounded text-xs font-cinzel'
             style={{ background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5' }}
-            onClick={generate}>다시 시도</button>
+            onClick={generate}>重新尝试</button>
         </div>
       )}
       {interpretation && (
         <div>
           <div className='mb-4 pb-3' style={{ borderBottom: '1px solid rgba(201,168,76,0.2)' }}>
             <p className='text-xs font-cinzel' style={{ color: 'var(--gold-dim)' }}>
-              AI 베딕 운세 해석 {theme ? '— ' + theme.name : ''}
+              AI吠陀命盘解读 {theme ? '— ' + theme.name : ''}
             </p>
-            <p className='font-cinzel font-bold text-lg' style={{ color: 'var(--gold-light)' }}>{birthInfo.name}님</p>
+            <p className='font-cinzel font-bold text-lg' style={{ color: 'var(--gold-light)' }}>{birthInfo.name}</p>
             <p className='text-xs mt-0.5' style={{ color: 'var(--text-muted)' }}>{birthInfo.date} · {birthInfo.place}</p>
           </div>
           <div className='ai-prose'>{formatInterpretation(interpretation)}</div>
           <div className='mt-6 pt-4 flex justify-center' style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
             <button className='text-xs font-cinzel px-4 py-2 rounded-lg hover:opacity-80'
               style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
-              onClick={generate} disabled={loading}>🔄 다시 해석받기</button>
+              onClick={generate} disabled={loading}>🔄 重新解读</button>
           </div>
         </div>
       )}
