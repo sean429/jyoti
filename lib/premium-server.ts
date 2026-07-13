@@ -15,9 +15,11 @@ export function signToken(payload: object): string {
 }
 
 // Upstash Redis over REST — one command per call, e.g. redis(['GET', 'order:x']).
+// Vercel's Upstash integration names the vars KV_REST_API_*; standalone Upstash
+// uses UPSTASH_REDIS_REST_* — accept either.
 export async function redis(cmd: (string | number)[]): Promise<unknown> {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const url = process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN;
   if (!url || !token) throw new Error('Redis is not configured');
   const res = await fetch(url, {
     method: 'POST',
