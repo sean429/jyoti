@@ -311,14 +311,20 @@ export async function POST(req: NextRequest) {
     const optionalProfile = safeThemeName ? `테마: ${safeThemeName}` : '(없음)';
 
     // Paid deep-dive block, or the free-preview block when the gate didn't pass
-    const PREVIEW_BLOCK = `[무료 미리보기 지시]
+    const PREVIEW_BLOCK = `[무료 미리보기 지시 — 분량 엄수]
 이것은 유료 프리미엄 해석의 무료 미리보기다. 위의 기본 응답 구조를 무시하고 아래 규칙을 따르라:
-* "첫인상" 단 하나의 섹션만 작성한다. 이 주제에 대해 차트가 보여주는 가장 강렬한 특징 2가지를 600~900자로 말하고, 반드시 구체적인 차트 근거(하우스·행성·낙샤트라)를 든다.
+* 전체 분량은 공백 포함 700자를 절대 넘기지 마라. 섹션 제목 없이 문단 3개로만 쓴다.
+* 문단 1~2: 이 주제에 대해 차트가 보여주는 가장 강렬한 특징 2가지를 각각 2~3문장으로 말한다. 반드시 구체적인 차트 근거(하우스·행성·낙샤트라)를 든다.
 * 독자가 가장 궁금해할 지점(구체적 시기, 어울리는 분야 목록, 배우자 기질, 취약 부위, 올해의 전략 등)은 "그건 전체 보고서에서 자세히 다룬다"는 식으로 존재만 알리고 절대 답을 주지 않는다.
-* 마지막 두 문장: 이 사람의 차트에서 전체 보고서가 밝혀낼 내용을 호기심이 생기게 한 문장으로 예고하고, 나니마의 따뜻한 한마디로 닫는다.`;
+* 문단 3(두 문장): 전체 보고서가 밝혀낼 내용을 호기심이 생기게 예고하고, 나니마의 따뜻한 한마디로 닫는다.`;
+    const FREE_BLOCK = `[무료 해석 분량 지시 — 엄수]
+이것은 무료 해석이다. 위 응답 구조의 흐름(첫인상 → 핵심 성향 → 현재 다샤 → 조언 → 한마디)은 따르되:
+* 섹션을 4개 이하로 합치고, 각 섹션은 2~4문장으로 압축한다.
+* 전체 분량은 공백 포함 1,800자를 절대 넘기지 마라. 가장 중요한 통찰만 남기고 세부 나열은 버려라.
+* 특정 영역(직업·연애·건강·올해·가족)의 깊은 분석은 프리미엄 심층 보고서에서 다룬다는 언급을 딱 한 문장만 자연스럽게 넣어도 된다.`;
     const premiumBlock = theme?.premiumId && PREMIUM_PROMPTS[theme.premiumId]
       ? `\n${previewMode ? PREVIEW_BLOCK : PREMIUM_PROMPTS[theme.premiumId]}\n`
-      : '';
+      : `\n${FREE_BLOCK}\n`;
 
     const prompt = `이것은 베딕 점성술 커스텀 차트 조립 프롬프트입니다.
 
@@ -464,9 +470,11 @@ ${premiumBlock}
 ${lang === 'ko' ? 'return only Korean.' : lang === 'zh' ? 'return only Simplified Chinese. Your entire response must be in Simplified Chinese (zh-CN).' : 'return only English. Your entire response must be in English.'}`;
 
 
+    // Free/preview readings are capped hard so they never rival the paid report
+    const isPaidFull = !!theme?.premiumId && !previewMode;
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      generationConfig: { maxOutputTokens: 8192, temperature: 0.8 },
+      generationConfig: { maxOutputTokens: previewMode ? 1500 : isPaidFull ? 8192 : 3000, temperature: 0.8 },
     });
 
     const result = await model.generateContent(prompt);
