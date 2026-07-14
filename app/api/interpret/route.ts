@@ -470,11 +470,12 @@ ${premiumBlock}
 ${lang === 'ko' ? 'return only Korean.' : lang === 'zh' ? 'return only Simplified Chinese. Your entire response must be in Simplified Chinese (zh-CN).' : 'return only English. Your entire response must be in English.'}`;
 
 
-    // Free/preview readings are capped hard so they never rival the paid report
+    // Length is controlled by prompt instructions; token caps stay loose because
+    // Gemini 2.5 thinking tokens share this budget and tight caps truncate mid-sentence.
     const isPaidFull = !!theme?.premiumId && !previewMode;
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      generationConfig: { maxOutputTokens: previewMode ? 1500 : isPaidFull ? 8192 : 3000, temperature: 0.8 },
+      generationConfig: { maxOutputTokens: isPaidFull ? 8192 : 5120, temperature: 0.8 },
     });
 
     const result = await model.generateContent(prompt);
