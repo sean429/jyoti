@@ -217,29 +217,28 @@ export async function POST(req: NextRequest) {
     lang = body.lang ?? 'ko';
     const { chart, birthInfo, theme, premiumToken } = body;
 
-    // Premium theme gate — reject before spending any Gemini tokens
+    // Premium theme gate — without a valid token we serve a short free PREVIEW
+    // instead of the full paid reading (never the full text, so nothing to leak).
+    // An explicitly provided but expired/broken token still gets a clear error.
+    let previewMode = false;
     if (theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId)) {
-      const forbidden = {
-        ko: '결제 후 이용 가능한 해석입니다.',
-        en: 'This interpretation requires payment.',
-        zh: '此解读需要付费后使用。',
-      };
       const tokenErr = {
-        ko: '결제 정보가 만료되었거나 유효하지 않습니다. 다시 결제해주세요.',
-        en: 'Payment expired or invalid. Please purchase again.',
-        zh: '支付信息已过期或无效，请重新购买。',
+        ko: '결제 정보가 만료되었거나 유효하지 않습니다. 결제하신 이메일로 다시 잠금 해제해주세요.',
+        en: 'Payment expired or invalid. Please unlock again with your payment email.',
+        zh: '支付信息已过期或无效，请用付款邮箱重新解锁。',
       };
       const lk = (lang === 'zh' ? 'zh' : lang === 'en' ? 'en' : 'ko') as 'ko' | 'en' | 'zh';
       if (!premiumToken || !process.env.JWT_SECRET) {
-        return NextResponse.json({ error: forbidden[lk] }, { status: 403 });
-      }
-      try {
-        const payload = verifyPremiumToken(premiumToken);
-        if (!Array.isArray(payload.themes) || !payload.themes.includes(theme.premiumId)) {
-          return NextResponse.json({ error: forbidden[lk] }, { status: 403 });
+        previewMode = true;
+      } else {
+        try {
+          const payload = verifyPremiumToken(premiumToken);
+          if (!Array.isArray(payload.themes) || !payload.themes.includes(theme.premiumId)) {
+            previewMode = true;
+          }
+        } catch {
+          return NextResponse.json({ error: tokenErr[lk] }, { status: 403 });
         }
-      } catch {
-        return NextResponse.json({ error: tokenErr[lk] }, { status: 403 });
       }
     }
 
@@ -311,9 +310,14 @@ export async function POST(req: NextRequest) {
     const userQuestion = safeThemeDesc || '(없음)';
     const optionalProfile = safeThemeName ? `테마: ${safeThemeName}` : '(없음)';
 
-    // Paid deep-dive block — the payment gate above already passed if premiumId is set
+    // Paid deep-dive block, or the free-preview block when the gate didn't pass
+    const PREVIEW_BLOCK = `[무료 미리보기 지시]
+이것은 유료 프리미엄 해석의 무료 미리보기다. 위의 기본 응답 구조를 무시하고 아래 규칙을 따르라:
+* "첫인상" 단 하나의 섹션만 작성한다. 이 주제에 대해 차트가 보여주는 가장 강렬한 특징 2가지를 600~900자로 말하고, 반드시 구체적인 차트 근거(하우스·행성·낙샤트라)를 든다.
+* 독자가 가장 궁금해할 지점(구체적 시기, 어울리는 분야 목록, 배우자 기질, 취약 부위, 올해의 전략 등)은 "그건 전체 보고서에서 자세히 다룬다"는 식으로 존재만 알리고 절대 답을 주지 않는다.
+* 마지막 두 문장: 이 사람의 차트에서 전체 보고서가 밝혀낼 내용을 호기심이 생기게 한 문장으로 예고하고, 나니마의 따뜻한 한마디로 닫는다.`;
     const premiumBlock = theme?.premiumId && PREMIUM_PROMPTS[theme.premiumId]
-      ? `\n${PREMIUM_PROMPTS[theme.premiumId]}\n`
+      ? `\n${previewMode ? PREVIEW_BLOCK : PREMIUM_PROMPTS[theme.premiumId]}\n`
       : '';
 
     const prompt = `이것은 베딕 점성술 커스텀 차트 조립 프롬프트입니다.
@@ -468,7 +472,7 @@ ${lang === 'ko' ? 'return only Korean.' : lang === 'zh' ? 'return only Simplifie
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
-    return NextResponse.json({ interpretation: text });
+    return NextResponse.json({ interpretation: text, preview: previewMode });
   } catch (err) {
     const name = err instanceof Error ? err.name : 'UnknownError';
     const code = (err as Record<string, unknown>)?.status ?? (err as Record<string, unknown>)?.code ?? '';

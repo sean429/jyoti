@@ -17,6 +17,7 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [generated, setGenerated] = useState(false);
+  const [isPreview, setIsPreview] = useState(false);
   const [lastThemeId, setLastThemeId] = useState<string>('');
 
   const themeKey = theme ? theme.name + '-' + theme.d2 : 'general';
@@ -37,7 +38,7 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
       });
       const data = await res.json();
       if (data.error) setError(data.error);
-      else { setInterpretation(data.interpretation); setGenerated(true); }
+      else { setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true); }
     } catch { setError('Connection error. Please try again.'); }
     setLoading(false);
   }
@@ -120,6 +121,11 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
                 <p className="text-xs" style={{ color: 'rgba(156,163,175,0.6)' }}>
                   {theme.d2 > 0 ? `Combined analysis of D1 Rashi and D${theme.d2} charts` : 'Analysis based on your D1 Rashi chart'}
                 </p>
+                {!!theme.premiumId && !premiumToken && (
+                  <p className="text-xs mt-1" style={{ color: '#c4b5fd' }}>
+                    Preview the opening section free — the full report unlocks after purchase
+                  </p>
+                )}
               </>
             ) : (
               <>
@@ -130,7 +136,9 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
               </>
             )}
           </div>
-          <button className="btn-gold" onClick={generate}>{theme ? `? ${theme.name} AI Reading ?` : '? Generate AI Reading ?'}</button>
+          <button className="btn-gold" onClick={generate}>
+            {theme?.premiumId && !premiumToken ? `? ${theme.name} Free Preview ?` : theme ? `? ${theme.name} AI Reading ?` : '? Generate AI Reading ?'}
+          </button>
         </div>
       )}
       {loading && (
@@ -159,17 +167,45 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
         </div>
       )}
       {interpretation && (
-        <div>
+        <div className="print-report">
           <div className="mb-4 pb-3" style={{ borderBottom: '1px solid rgba(201,168,76,0.2)' }}>
-            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>AI READING FOR</p>
+            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>AI READING FOR{isPreview ? ' (FREE PREVIEW)' : ''}</p>
             <p className="font-cinzel font-bold text-lg" style={{ color: 'var(--gold-light)' }}>{birthInfo.name}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{birthInfo.date} ? {birthInfo.place}</p>
           </div>
           <div className="ai-prose">{formatInterpretation(interpretation)}</div>
-          <div className="mt-6 pt-4 flex justify-center" style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
+          {isPreview && (
+            <div className="relative mt-6 no-print" aria-hidden="true">
+              <div style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none' }}>
+                {[0, 1, 2].map(s => (
+                  <div key={s} className="mb-6">
+                    <div className="h-4 mb-3 rounded" style={{ background: 'rgba(201,168,76,0.35)', width: '38%' }} />
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-3 mb-2 rounded"
+                        style={{ background: 'rgba(240,235,224,0.16)', width: `${92 - ((s * 5 + i) * 9) % 28}%` }} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6"
+                style={{ background: 'linear-gradient(180deg, rgba(8,8,24,0) 0%, rgba(8,8,24,0.9) 45%)' }}>
+                <p className="font-cinzel text-sm mb-2" style={{ color: '#e9d5ff' }}>This is where the free preview ends</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)', maxWidth: '380px' }}>
+                  The full report contains 8 sections of in-depth analysis — talents, best-fit fields, timing and more.
+                  Unlock it in the Premium Deep Readings above.
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="mt-6 pt-4 flex justify-center gap-2 no-print" style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
             <button className="text-xs font-cinzel px-4 py-2 rounded-lg hover:opacity-80"
               style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
               onClick={generate} disabled={loading}>? Regenerate Reading</button>
+            {!isPreview && (
+              <button className="text-xs font-cinzel px-4 py-2 rounded-lg hover:opacity-80"
+                style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
+                onClick={() => window.print()}>? Save as PDF</button>
+            )}
           </div>
         </div>
       )}

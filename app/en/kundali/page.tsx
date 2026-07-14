@@ -255,11 +255,7 @@ export default function EnKundaliPage() {
                               return (
                                 <button key={t.id}
                                   onClick={() => {
-                                    if (unlocked) {
-                                      setActivePremium(active ? null : t);
-                                    } else if (GROBLE_URLS.single) {
-                                      window.open(GROBLE_URLS.single, '_blank');
-                                    }
+                                    setActivePremium(active ? null : t);
                                   }}
                                   className="px-2 py-1 rounded text-xs font-cinzel transition-all"
                                   style={{

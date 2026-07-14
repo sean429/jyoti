@@ -483,12 +483,8 @@ export default function KoKundaliPage() {
                               return (
                                 <button key={t.id}
                                   onClick={() => {
-                                    if (unlocked) {
-                                      setActivePremium(active ? null : t);
-                                      setSelectedTheme(null);
-                                    } else if (GROBLE_URLS.single) {
-                                      window.open(GROBLE_URLS.single, '_blank');
-                                    }
+                                    setActivePremium(active ? null : t);
+                                    setSelectedTheme(null);
                                   }}
                                   className="px-2 py-1 rounded text-xs font-cinzel transition-all"
                                   style={{
