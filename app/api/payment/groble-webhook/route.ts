@@ -4,9 +4,30 @@ import { redis, PREMIUM_THEME_IDS } from '@/lib/premium-server';
 
 const YEAR_SECONDS = 31_536_000; // purchase records live 1 year in Redis
 
-// Maps Groble option/product names to theme ids (option names are free text
-// set in the Groble dashboard, so match by keyword across ko/en/zh).
-const THEME_KEYWORDS: [RegExp, string][] = [
+// Maps Groble option/answer text to theme ids. Exact theme names (ko/zh) are
+// checked first — they are what buyers pick in product options — and the
+// looser premium keyword regexes only run when no exact name matched.
+const STD_THEME_NAMES: [string[], string][] = [
+  [['운명의 기본값', '命运基础'], 'std1'],
+  [['배우자 인연', '伴侣缘分'], 'std2'],
+  [['자녀와 창조성', '子女创造力'], 'std3'],
+  [['돈의 그릇', '财富格局'], 'std4'],
+  [['사업의 판', '事业舞台'], 'std5'],
+  [['직업의 궤도', '职业轨道'], 'std6'],
+  [['집과 뿌리', '家园根基'], 'std7'],
+  [['부모와 가문', '父母家族'], 'std8'],
+  [['이동과 소유', '出行财物'], 'std9'],
+  [['공부와 전문성', '学业专长'], 'std10'],
+  [['영적 방향', '灵性方向'], 'std11'],
+  [['타고난 무기', '天赋才能'], 'std12'],
+  [['반복되는 문제', '业力课题'], 'std13'],
+  [['모계 흐름', '母系传承'], 'std14'],
+  [['부계 흐름', '父系传承'], 'std15'],
+];
+
+const ALL_STD_IDS = STD_THEME_NAMES.map(([, id]) => id);
+
+const PREMIUM_KEYWORDS: [RegExp, string][] = [
   [/직업|재물|커리어|career|职业|财富/i, 'career'],
   [/연애|결혼|사랑|love|marriage|爱情|婚姻/i, 'love'],
   [/건강|health|健康/i, 'health'],
@@ -57,17 +78,41 @@ export async function POST(req: NextRequest) {
 
   const o = event.data?.object ?? {};
   const contentId: string = o.content?.id ?? '';
-  const optionText: string = [o.content?.title ?? '', ...(Array.isArray(o.options) ? o.options.map((op: any) => op?.name ?? '') : [])].join(' ');
+  // Buyer-visible text: product title + option names + question answers
+  // (the 5-theme std bundle collects picks via a product question).
+  const optionText: string = [
+    o.content?.title ?? '',
+    ...(Array.isArray(o.options) ? o.options.map((op: any) => op?.name ?? '') : []),
+    ...(Array.isArray(o.questionAnswers) ? o.questionAnswers.map((qa: any) => `${qa?.question ?? ''} ${qa?.answer ?? ''}`) : []),
+  ].join(' ');
   const amount: number = o.pricing?.finalAmount ?? 0;
 
-  // ALL and TRIO both unlock everything (TRIO costs the same as ALL — it
-  // exists as a decoy offer, so granting all themes can never short-change a buyer).
-  let themes: string[];
+  let themes: string[] = [];
   if (contentId && (contentId === process.env.GROBLE_PRODUCT_ALL || contentId === process.env.GROBLE_PRODUCT_TRIO)) {
     themes = [...PREMIUM_THEME_IDS];
   } else {
-    themes = THEME_KEYWORDS.filter(([re]) => re.test(optionText)).map(([, id]) => id);
-    if (!themes.length && amount >= 9900) themes = [...PREMIUM_THEME_IDS];
+    // 1) exact std theme names picked in options/answers
+    themes = STD_THEME_NAMES.filter(([names]) => names.some(n => optionText.includes(n))).map(([, id]) => id);
+    // 2) premium deep-dive keywords (only when nothing std matched, to avoid
+    //    e.g. '돈의 그릇' accidentally granting the premium career theme)
+    if (!themes.length) {
+      themes = PREMIUM_KEYWORDS.filter(([re]) => re.test(optionText)).map(([, id]) => id);
+    }
+    // 3) product-name tokens
+    if (!themes.length) {
+      if (/통합|PDF|전체.*이용권|完整报告/i.test(optionText)) themes = [...PREMIUM_THEME_IDS];
+      else if (/15개|15项/.test(optionText)) themes = [...ALL_STD_IDS];
+    }
+    // 4) amount tiers: 12,900 = all 15 std, 9,900 = premium 5 (discounted all-pass),
+    //    4,900+ unmatched = grant all 15 std rather than under-serve a buyer
+    if (!themes.length) {
+      if (amount >= 12900) themes = [...ALL_STD_IDS];
+      else if (amount >= 9900) themes = [...PREMIUM_THEME_IDS];
+      else if (amount >= 4900) {
+        console.warn('[groble-webhook] unmatched mid-tier purchase, granting all std themes:', contentId, optionText);
+        themes = [...ALL_STD_IDS];
+      }
+    }
   }
   if (!themes.length) {
     console.error('[groble-webhook] no theme matched:', contentId, optionText);

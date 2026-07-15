@@ -8,7 +8,13 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 // Premium theme gating — token issued by /api/payment/claim after a Groble
 // purchase, HMAC-signed with JWT_SECRET, valid 24h.
 // ---------------------------------------------------------------------------
-const PREMIUM_THEME_IDS = new Set(['career', 'love', 'health', 'yearly', 'family']);
+// Two paid tiers: the 5 deep-dive themes, and the 15 standard divisional
+// themes (std1..std15) that moved from the free tier. Both are token-gated;
+// only the general reading and the free custom question stay free.
+const PREMIUM_THEME_IDS = new Set([
+  'career', 'love', 'health', 'yearly', 'family',
+  ...Array.from({ length: 15 }, (_, i) => `std${i + 1}`),
+]);
 
 // ---------------------------------------------------------------------------
 // Premium deep-dive instruction blocks — server-side so the paid prompt logic
@@ -322,10 +328,13 @@ export async function POST(req: NextRequest) {
     const FREE_BLOCK = `[무료 요약 해석 지시 — 분량 엄수]
 이것은 무료 요약 해석이다. 위의 기본 응답 구조(1~9번)를 완전히 무시하고, 아래 구조로만 쓴다:
 * 섹션 제목 없이 문단 4개: ① 첫인상 — 차트에서 가장 강하게 반복되는 테마 하나 ② 핵심 성향 — 차트 근거를 든 2~3문장 ③ 현재 다샤 흐름 — 2~3문장 ④ 작은 현실 조언 하나와 나니마의 따뜻한 한마디.
-* 각 문단은 2~4문장, 전체 분량은 공백 포함 900자를 절대 넘기지 마라. 세부 나열은 버리고 가장 중요한 통찰만 남겨라.
+* 각 문단은 2~4문장, 전체 분량은 공백 포함 1,200자를 절대 넘기지 마라. 세부 나열은 버리고 가장 중요한 통찰만 남기되, 반드시 완결된 문장으로 끝내라.
 * 특정 영역(직업·연애·건강·올해·가족)의 깊은 분석은 프리미엄 심층 보고서에서 다룬다는 언급을 딱 한 문장만 자연스럽게 넣어도 된다.`;
-    const premiumBlock = theme?.premiumId && PREMIUM_PROMPTS[theme.premiumId]
-      ? `\n${previewMode ? PREVIEW_BLOCK : PREMIUM_PROMPTS[theme.premiumId]}\n`
+    // Paid std themes without a bespoke deep-dive block get the full default
+    // 9-section structure (empty block); free requests get the summary block.
+    const isGatedTheme = !!theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId);
+    const premiumBlock = isGatedTheme
+      ? (previewMode ? `\n${PREVIEW_BLOCK}\n` : (PREMIUM_PROMPTS[theme.premiumId] ? `\n${PREMIUM_PROMPTS[theme.premiumId]}\n` : ''))
       : `\n${FREE_BLOCK}\n`;
 
     const prompt = `이것은 베딕 점성술 커스텀 차트 조립 프롬프트입니다.
@@ -472,12 +481,11 @@ ${premiumBlock}
 ${lang === 'ko' ? 'return only Korean.' : lang === 'zh' ? 'return only Simplified Chinese. Your entire response must be in Simplified Chinese (zh-CN).' : 'return only English. Your entire response must be in English.'}`;
 
 
-    // Length is controlled by prompt instructions; token caps stay loose because
-    // Gemini 2.5 thinking tokens share this budget and tight caps truncate mid-sentence.
-    const isPaidFull = !!theme?.premiumId && !previewMode;
+    // Length is controlled by prompt instructions only; Gemini 2.5 thinking
+    // tokens share this budget, so a tight cap truncates output mid-sentence.
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      generationConfig: { maxOutputTokens: isPaidFull ? 8192 : 5120, temperature: 0.8 },
+      generationConfig: { maxOutputTokens: 8192, temperature: 0.8 },
     });
 
     const result = await model.generateContent(prompt);

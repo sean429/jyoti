@@ -60,6 +60,9 @@ const GROBLE_URLS = {
   single: process.env.NEXT_PUBLIC_GROBLE_SINGLE_URL ?? '',
   trio: process.env.NEXT_PUBLIC_GROBLE_TRIO_URL ?? '',
   all: process.env.NEXT_PUBLIC_GROBLE_ALL_URL ?? '',
+  stdSingle: process.env.NEXT_PUBLIC_GROBLE_STD_SINGLE_URL ?? '',
+  stdFive: process.env.NEXT_PUBLIC_GROBLE_STD_FIVE_URL ?? '',
+  stdAll: process.env.NEXT_PUBLIC_GROBLE_STD_ALL_URL ?? '',
 };
 
 export default function KoKundaliPage() {
@@ -116,7 +119,7 @@ export default function KoKundaliPage() {
         setUnlockedThemes(data.themes);
         setJustUnlocked(true);
         setClaimCode('');
-        if (data.themes.length >= PREMIUM_THEMES_KO.length) setFullReport(true);
+        if (PREMIUM_THEMES_KO.every(t => data.themes.includes(t.id))) setFullReport(true);
       } else setPaymentError(data.error ?? '결제 내역을 찾지 못했습니다.');
     } catch { setPaymentError('확인에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
     setPaymentLoading(false);
@@ -147,6 +150,9 @@ export default function KoKundaliPage() {
 
   const moonPlanet = chart?.planets.find(p => p.id === 'moon');
   const sunPlanet  = chart?.planets.find(p => p.id === 'sun');
+
+  const premiumAllUnlocked = PREMIUM_THEMES_KO.every(t => unlockedThemes.includes(t.id));
+  const stdAllUnlocked = THEMES.every(t => unlockedThemes.includes('std' + t.id));
 
   const COLORS: Record<string,string> = {
     sun:'#f59e0b', moon:'#c0c0c0', mars:'#ef4444', mercury:'#10b981',
@@ -435,7 +441,7 @@ export default function KoKundaliPage() {
                       const aiTheme = activePremium
                         ? { name: activePremium.name, desc: activePremium.desc + (question ? ' 추가 질문: ' + question : ''), d2: activePremium.d2, premiumId: activePremium.id }
                         : selectedTheme
-                          ? { name: selectedTheme.name, desc: selectedTheme.desc + (question ? ' 추가 질문: ' + question : ''), d2: selectedTheme.d2 }
+                          ? { name: selectedTheme.name, desc: selectedTheme.desc + (question ? ' 추가 질문: ' + question : ''), d2: selectedTheme.d2, premiumId: 'std' + selectedTheme.id }
                           : question
                             ? { name: '나의 질문', desc: question, d2: 0 }
                             : undefined;
@@ -447,7 +453,10 @@ export default function KoKundaliPage() {
                         {/* Theme picker for AI */}
                         {!fullReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
-                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>해석 주제 선택 (특정 영역 AI 운세 보기)</p>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>해석 주제 선택 — 종합 운세는 무료</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>심층 테마 단품 ₩2,000 · 5개 ₩5,000 · 15개 ₩12,900</p>
+                          </div>
                           <div className="flex flex-wrap gap-1.5">
                             <button
                               onClick={() => { setSelectedTheme(null); setActivePremium(null); }}
@@ -457,21 +466,48 @@ export default function KoKundaliPage() {
                                 border: '1px solid rgba(201,168,76,0.2)',
                                 color: !selectedTheme && !activePremium ? 'var(--gold-light)' : 'var(--text-muted)',
                               }}>
-                              종합 운세
+                              종합 운세 (무료)
                             </button>
-                            {THEMES.map(t => (
+                            {THEMES.map(t => {
+                              const unlocked = unlockedThemes.includes('std' + t.id);
+                              return (
                               <button key={t.id}
                                 onClick={() => { setSelectedTheme(t); setActivePremium(null); }}
                                 className="px-2 py-1 rounded text-xs font-cinzel transition-all"
                                 style={{
                                   background: selectedTheme?.id === t.id ? 'rgba(201,168,76,0.2)' : 'transparent',
                                   border: '1px solid rgba(201,168,76,0.2)',
-                                  color: selectedTheme?.id === t.id ? 'var(--gold-light)' : 'var(--text-muted)',
+                                  color: selectedTheme?.id === t.id || unlocked ? 'var(--gold-light)' : 'var(--text-muted)',
                                 }}>
-                                {t.name}
+                                {t.name} {unlocked ? '🔓' : '🔒'}
                               </button>
-                            ))}
+                              );
+                            })}
                           </div>
+                          {!stdAllUnlocked && (
+                            <div className="mt-3">
+                              <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                                잠긴 테마는 무료 미리보기로 맛볼 수 있어요 — 전체 해석은 구매 후 결제 이메일로 열립니다
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {GROBLE_URLS.stdSingle && (
+                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 테마 1개 ₩2,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.stdFive && (
+                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 테마 5개 ₩5,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.stdAll && (
+                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
+                                    💳 15개 전부 ₩12,900
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         )}
 
@@ -504,38 +540,35 @@ export default function KoKundaliPage() {
                             })}
                           </div>
                           )}
-                          {unlockedThemes.length >= PREMIUM_THEMES_KO.length && (
+                          {premiumAllUnlocked && (
                             <button onClick={() => setFullReport(!fullReport)}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
                               style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
                               {fullReport ? '↩ 개별 테마 보기' : '📕 5개 테마 통합 보고서 (PDF 한 권)'}
                             </button>
                           )}
-                          {unlockedThemes.length < PREMIUM_THEMES_KO.length && (
+                          {!premiumAllUnlocked && (
                             <div className="mb-2">
-                              <div className="flex flex-wrap gap-1.5 mb-2">
+                              <div className="flex flex-wrap gap-2 mb-2 items-center">
                                 {GROBLE_URLS.single && (
-                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
-                                    style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
-                                    테마 1개 ₩3,900
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 테마 1개 ₩3,900
                                   </a>
                                 )}
                                 {GROBLE_URLS.trio && (
-                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
-                                    style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
-                                    테마 3개 ₩10,000
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 테마 3개 ₩10,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.all && (
-                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
-                                    style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.6)', color: '#e9d5ff' }}>
-                                    ⭐ 전체 5개 <s style={{ opacity: 0.6, fontWeight: 400 }}>₩12,900</s> ₩9,900
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
+                                    📕 통합 PDF 보고서 · 5개 전체 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩12,900</s> ₩9,900
                                   </a>
                                 )}
                               </div>
+                              <p className="text-[10px] mb-1" style={{ color: 'rgba(230,193,90,0.75)' }}>
+                                📕 통합 PDF 보고서: 5개 테마를 한 번에 해석해 표지·챕터가 갖춰진 PDF 한 권으로 저장할 수 있어요
+                              </p>
                               <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
                                 결제 완료 후, 결제하신 이메일이나 주문번호를 아래에 입력하면 바로 열립니다
                               </p>

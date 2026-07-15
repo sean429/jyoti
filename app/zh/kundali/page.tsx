@@ -59,6 +59,9 @@ const GROBLE_URLS = {
   single: process.env.NEXT_PUBLIC_GROBLE_SINGLE_URL ?? '',
   trio: process.env.NEXT_PUBLIC_GROBLE_TRIO_URL ?? '',
   all: process.env.NEXT_PUBLIC_GROBLE_ALL_URL ?? '',
+  stdSingle: process.env.NEXT_PUBLIC_GROBLE_STD_SINGLE_URL ?? '',
+  stdFive: process.env.NEXT_PUBLIC_GROBLE_STD_FIVE_URL ?? '',
+  stdAll: process.env.NEXT_PUBLIC_GROBLE_STD_ALL_URL ?? '',
 };
 
 export default function ZhKundaliPage() {
@@ -115,7 +118,7 @@ export default function ZhKundaliPage() {
         setUnlockedThemes(data.themes);
         setJustUnlocked(true);
         setClaimCode('');
-        if (data.themes.length >= PREMIUM_THEMES_ZH.length) setFullReport(true);
+        if (PREMIUM_THEMES_ZH.every(t => data.themes.includes(t.id))) setFullReport(true);
       } else setPaymentError(data.error ?? '未找到付款记录。');
     } catch { setPaymentError('验证失败，请稍后重试。'); }
     setPaymentLoading(false);
@@ -143,6 +146,9 @@ export default function ZhKundaliPage() {
     } catch { setError('星盘计算失败，请重试。'); }
     setLoading(false);
   }
+
+  const premiumAllUnlocked = PREMIUM_THEMES_ZH.every(t => unlockedThemes.includes(t.id));
+  const stdAllUnlocked = THEMES.every(t => unlockedThemes.includes('std' + t.id));
 
   const moonPlanet = chart?.planets.find(p => p.id === 'moon');
   const sunPlanet  = chart?.planets.find(p => p.id === 'sun');
@@ -431,7 +437,7 @@ export default function ZhKundaliPage() {
                       const aiTheme = activePremium
                         ? { name: activePremium.name, desc: activePremium.desc + (question ? ' 补充问题: ' + question : ''), d2: activePremium.d2, premiumId: activePremium.id }
                         : selectedTheme
-                          ? { name: selectedTheme.name, desc: selectedTheme.desc + (question ? ' 补充问题: ' + question : ''), d2: selectedTheme.d2 }
+                          ? { name: selectedTheme.name, desc: selectedTheme.desc + (question ? ' 补充问题: ' + question : ''), d2: selectedTheme.d2, premiumId: 'std' + selectedTheme.id }
                           : question
                             ? { name: '我的问题', desc: question, d2: 0 }
                             : undefined;
@@ -442,7 +448,10 @@ export default function ZhKundaliPage() {
                         </h3>
                         {!fullReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
-                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>选择解读主题（查看特定领域AI解读）</p>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>选择解读主题 — 综合解读免费</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>深度主题 单项 ₩2,000 · 5项 ₩5,000 · 15项 ₩12,900</p>
+                          </div>
                           <div className="flex flex-wrap gap-1.5">
                             <button
                               onClick={() => { setSelectedTheme(null); setActivePremium(null); }}
@@ -452,21 +461,48 @@ export default function ZhKundaliPage() {
                                 border: '1px solid rgba(201,168,76,0.2)',
                                 color: !selectedTheme && !activePremium ? 'var(--gold-light)' : 'var(--text-muted)',
                               }}>
-                              综合解读
+                              综合解读（免费）
                             </button>
-                            {THEMES.map(t => (
+                            {THEMES.map(t => {
+                              const unlocked = unlockedThemes.includes('std' + t.id);
+                              return (
                               <button key={t.id}
                                 onClick={() => { setSelectedTheme(t); setActivePremium(null); }}
                                 className="px-2 py-1 rounded text-xs font-cinzel transition-all"
                                 style={{
                                   background: selectedTheme?.id === t.id ? 'rgba(201,168,76,0.2)' : 'transparent',
                                   border: '1px solid rgba(201,168,76,0.2)',
-                                  color: selectedTheme?.id === t.id ? 'var(--gold-light)' : 'var(--text-muted)',
+                                  color: selectedTheme?.id === t.id || unlocked ? 'var(--gold-light)' : 'var(--text-muted)',
                                 }}>
-                                {t.name}
+                                {t.name} {unlocked ? '🔓' : '🔒'}
                               </button>
-                            ))}
+                              );
+                            })}
                           </div>
+                          {!stdAllUnlocked && (
+                            <div className="mt-3">
+                              <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                                锁定的主题可先免费预览 — 完整解读在购买后用付款邮箱解锁
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {GROBLE_URLS.stdSingle && (
+                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 单项主题 ₩2,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.stdFive && (
+                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 5项主题 ₩5,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.stdAll && (
+                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
+                                    💳 全部15项 ₩12,900
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         )}
 
@@ -499,38 +535,35 @@ export default function ZhKundaliPage() {
                             })}
                           </div>
                           )}
-                          {unlockedThemes.length >= PREMIUM_THEMES_ZH.length && (
+                          {premiumAllUnlocked && (
                             <button onClick={() => setFullReport(!fullReport)}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
                               style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
                               {fullReport ? '↩ 查看单项主题' : '📕 5项主题完整报告（一份PDF）'}
                             </button>
                           )}
-                          {unlockedThemes.length < PREMIUM_THEMES_ZH.length && (
+                          {!premiumAllUnlocked && (
                             <div className="mb-2">
-                              <div className="flex flex-wrap gap-1.5 mb-2">
+                              <div className="flex flex-wrap gap-2 mb-2 items-center">
                                 {GROBLE_URLS.single && (
-                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
-                                    style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
-                                    单项主题 ₩3,900
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 单项主题 ₩3,900
                                   </a>
                                 )}
                                 {GROBLE_URLS.trio && (
-                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
-                                    style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
-                                    3项主题 ₩10,000
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 3项主题 ₩10,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.all && (
-                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
-                                    style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.6)', color: '#e9d5ff' }}>
-                                    ⭐ 全部5项 <s style={{ opacity: 0.6, fontWeight: 400 }}>₩12,900</s> ₩9,900
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
+                                    📕 完整PDF报告 · 全部5项 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩12,900</s> ₩9,900
                                   </a>
                                 )}
                               </div>
+                              <p className="text-[10px] mb-1" style={{ color: 'rgba(230,193,90,0.75)' }}>
+                                📕 完整PDF报告：一次解读5个主题，生成带封面与章节的完整PDF报告
+                              </p>
                               <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
                                 完成支付后，在下方输入付款时使用的邮箱或订单号即可解锁
                               </p>

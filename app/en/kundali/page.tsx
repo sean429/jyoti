@@ -87,7 +87,7 @@ export default function EnKundaliPage() {
         setUnlockedThemes(data.themes);
         setJustUnlocked(true);
         setClaimCode('');
-        if (data.themes.length >= PREMIUM_THEMES_EN.length) setFullReport(true);
+        if (PREMIUM_THEMES_EN.every(t => data.themes.includes(t.id))) setFullReport(true);
       } else setPaymentError(data.error ?? 'No payment found.');
     } catch { setPaymentError('Verification failed. Please try again.'); }
     setPaymentLoading(false);
@@ -103,6 +103,8 @@ export default function EnKundaliPage() {
     } catch { setError('Failed to calculate chart.'); }
     setLoading(false);
   }
+
+  const premiumAllUnlocked = PREMIUM_THEMES_EN.every(t => unlockedThemes.includes(t.id));
 
   const moonPlanet = chart?.planets.find(p => p.id === 'moon');
   const sunPlanet = chart?.planets.find(p => p.id === 'sun');
@@ -273,38 +275,35 @@ export default function EnKundaliPage() {
                             })}
                           </div>
                           )}
-                          {unlockedThemes.length >= PREMIUM_THEMES_EN.length && (
+                          {premiumAllUnlocked && (
                             <button onClick={() => setFullReport(!fullReport)}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
                               style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
                               {fullReport ? '↩ View single themes' : '📕 Full 5-Theme Report (one PDF)'}
                             </button>
                           )}
-                          {unlockedThemes.length < PREMIUM_THEMES_EN.length && (
+                          {!premiumAllUnlocked && (
                             <div className="mb-2">
-                              <div className="flex flex-wrap gap-1.5 mb-2">
+                              <div className="flex flex-wrap gap-2 mb-2 items-center">
                                 {GROBLE_URLS.single && (
-                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
-                                    style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
-                                    1 theme ₩3,900
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 1 theme ₩3,900
                                   </a>
                                 )}
                                 {GROBLE_URLS.trio && (
-                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
-                                    style={{ background: 'transparent', border: '1px solid rgba(167,139,250,0.35)', color: '#c4b5fd' }}>
-                                    3 themes ₩10,000
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                    💳 3 themes ₩10,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.all && (
-                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer"
-                                    className="px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
-                                    style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.6)', color: '#e9d5ff' }}>
-                                    ⭐ All 5 <s style={{ opacity: 0.6, fontWeight: 400 }}>₩12,900</s> ₩9,900
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
+                                    📕 Full PDF Report · All 5 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩12,900</s> ₩9,900
                                   </a>
                                 )}
                               </div>
+                              <p className="text-[10px] mb-1" style={{ color: 'rgba(230,193,90,0.75)' }}>
+                                📕 Full PDF Report: all 5 themes read in one go, saved as a single PDF with cover and chapters
+                              </p>
                               <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
                                 After paying, enter the email or order number you used below to unlock instantly
                               </p>
