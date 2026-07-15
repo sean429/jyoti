@@ -115,6 +115,7 @@ export default function ZhKundaliPage() {
         setUnlockedThemes(data.themes);
         setJustUnlocked(true);
         setClaimCode('');
+        if (data.themes.length >= PREMIUM_THEMES_ZH.length) setFullReport(true);
       } else setPaymentError(data.error ?? '未找到付款记录。');
     } catch { setPaymentError('验证失败，请稍后重试。'); }
     setPaymentLoading(false);
@@ -439,6 +440,7 @@ export default function ZhKundaliPage() {
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-4">
                           <span className="ornament">AI命盘解读</span>
                         </h3>
+                        {!fullReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
                           <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>选择解读主题（查看特定领域AI解读）</p>
                           <div className="flex flex-wrap gap-1.5">
@@ -466,6 +468,7 @@ export default function ZhKundaliPage() {
                             ))}
                           </div>
                         </div>
+                        )}
 
                         {/* Premium themes */}
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
@@ -473,6 +476,7 @@ export default function ZhKundaliPage() {
                             <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 高级深度解读</p>
                             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>单项 ₩3,900 · 全部 ₩9,900</p>
                           </div>
+                          {!fullReport && (
                           <div className="flex flex-wrap gap-1.5 mb-2">
                             {PREMIUM_THEMES_ZH.map(t => {
                               const unlocked = unlockedThemes.includes(t.id);
@@ -494,6 +498,7 @@ export default function ZhKundaliPage() {
                               );
                             })}
                           </div>
+                          )}
                           {unlockedThemes.length >= PREMIUM_THEMES_ZH.length && (
                             <button onClick={() => setFullReport(!fullReport)}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
@@ -560,6 +565,7 @@ export default function ZhKundaliPage() {
                         </div>
 
                         {/* Custom question (free) */}
+                        {!fullReport && (
                         <div className="mb-4">
                           <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>想直接问Nani Ma的问题（可选）</p>
                           <textarea
@@ -572,6 +578,7 @@ export default function ZhKundaliPage() {
                             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
                           />
                         </div>
+                        )}
 
                         {fullReport && premiumToken ? (
                           <PremiumFullReport

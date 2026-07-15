@@ -116,6 +116,7 @@ export default function KoKundaliPage() {
         setUnlockedThemes(data.themes);
         setJustUnlocked(true);
         setClaimCode('');
+        if (data.themes.length >= PREMIUM_THEMES_KO.length) setFullReport(true);
       } else setPaymentError(data.error ?? '결제 내역을 찾지 못했습니다.');
     } catch { setPaymentError('확인에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
     setPaymentLoading(false);
@@ -444,6 +445,7 @@ export default function KoKundaliPage() {
                           <span className="ornament">AI 운세 해석 보기</span>
                         </h3>
                         {/* Theme picker for AI */}
+                        {!fullReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
                           <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>해석 주제 선택 (특정 영역 AI 운세 보기)</p>
                           <div className="flex flex-wrap gap-1.5">
@@ -471,6 +473,7 @@ export default function KoKundaliPage() {
                             ))}
                           </div>
                         </div>
+                        )}
 
                         {/* Premium themes */}
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
@@ -478,6 +481,7 @@ export default function KoKundaliPage() {
                             <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 프리미엄 심층 해석</p>
                             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>단품 ₩3,900 · 전체 ₩9,900</p>
                           </div>
+                          {!fullReport && (
                           <div className="flex flex-wrap gap-1.5 mb-2">
                             {PREMIUM_THEMES_KO.map(t => {
                               const unlocked = unlockedThemes.includes(t.id);
@@ -499,6 +503,7 @@ export default function KoKundaliPage() {
                               );
                             })}
                           </div>
+                          )}
                           {unlockedThemes.length >= PREMIUM_THEMES_KO.length && (
                             <button onClick={() => setFullReport(!fullReport)}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
@@ -565,6 +570,7 @@ export default function KoKundaliPage() {
                         </div>
 
                         {/* Custom question (free) */}
+                        {!fullReport && (
                         <div className="mb-4">
                           <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>나니마에게 직접 묻고 싶은 것 (선택)</p>
                           <textarea
@@ -577,6 +583,7 @@ export default function KoKundaliPage() {
                             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
                           />
                         </div>
+                        )}
 
                         {fullReport && premiumToken ? (
                           <PremiumFullReport

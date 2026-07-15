@@ -21,9 +21,22 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
   const [lastThemeId, setLastThemeId] = useState<string>('');
 
   const themeKey = theme ? theme.name + '-' + theme.d2 : 'general';
+  // Session cache: switching themes (or tabs) restores past readings for the
+  // same chart instead of burning another API call. Cleared naturally when the
+  // birth data changes (key includes it) or the browser session ends.
+  const cacheKey = `jyoti_interp_ko|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${themeKey}`;
+
   useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { text, preview } = JSON.parse(cached);
+        setInterpretation(text); setIsPreview(!!preview); setGenerated(true); setLastThemeId(themeKey);
+        return;
+      }
+    } catch {}
     if (themeKey !== lastThemeId && generated) { setGenerated(false); setInterpretation(''); }
-  }, [themeKey]);
+  }, [cacheKey]);
 
   async function generate() {
     setLoading(true); setError(''); setInterpretation(''); setLastThemeId(themeKey);
@@ -34,7 +47,10 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
       });
       const data = await res.json();
       if (data.error) setError(data.error);
-      else { setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true); }
+      else {
+        setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true);
+        try { sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.interpretation, preview: !!data.preview })); } catch {}
+      }
     } catch { setError('AI 해석 요청에 실패했습니다. 다시 시도해주세요.'); }
     setLoading(false);
   }

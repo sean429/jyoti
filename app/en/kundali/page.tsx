@@ -87,6 +87,7 @@ export default function EnKundaliPage() {
         setUnlockedThemes(data.themes);
         setJustUnlocked(true);
         setClaimCode('');
+        if (data.themes.length >= PREMIUM_THEMES_EN.length) setFullReport(true);
       } else setPaymentError(data.error ?? 'No payment found.');
     } catch { setPaymentError('Verification failed. Please try again.'); }
     setPaymentLoading(false);
@@ -250,6 +251,7 @@ export default function EnKundaliPage() {
                             <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 Premium Deep Readings</p>
                             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>₩3,900 each · all 5 for ₩9,900</p>
                           </div>
+                          {!fullReport && (
                           <div className="flex flex-wrap gap-1.5 mb-2">
                             {PREMIUM_THEMES_EN.map(t => {
                               const unlocked = unlockedThemes.includes(t.id);
@@ -270,6 +272,7 @@ export default function EnKundaliPage() {
                               );
                             })}
                           </div>
+                          )}
                           {unlockedThemes.length >= PREMIUM_THEMES_EN.length && (
                             <button onClick={() => setFullReport(!fullReport)}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
@@ -336,6 +339,7 @@ export default function EnKundaliPage() {
                         </div>
 
                         {/* Custom question (free) */}
+                        {!fullReport && (
                         <div className="mb-4">
                           <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>Ask Nani Ma directly (optional)</p>
                           <textarea
@@ -348,6 +352,7 @@ export default function EnKundaliPage() {
                             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
                           />
                         </div>
+                        )}
 
                         {fullReport && premiumToken ? (
                           <PremiumFullReport

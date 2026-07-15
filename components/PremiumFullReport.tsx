@@ -47,7 +47,25 @@ const STRINGS = {
 } as const;
 
 export default function PremiumFullReport({ chart, birthInfo, themes, premiumToken, lang }: Props) {
-  const [sections, setSections] = useState<{ theme: FTheme; text: string }[]>([]);
+  // Session cache: finished sections survive tab switches and page reloads for
+  // the same chart, so buyers never pay the 3-5 minute generation twice.
+  const cacheKey = `jyoti_fullreport_${lang}|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}`;
+  const [sections, setSections] = useState<{ theme: FTheme; text: string }[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const arr = JSON.parse(cached) as { id: string; text: string }[];
+        return arr
+          .map(({ id, text }) => {
+            const t = themes.find(th => th.id === id);
+            return t ? { theme: t, text } : null;
+          })
+          .filter((x): x is { theme: FTheme; text: string } => x !== null);
+      }
+    } catch {}
+    return [];
+  });
   const [current, setCurrent] = useState(-1); // index being generated; -1 idle
   const [error, setError] = useState('');
   const S = STRINGS[lang];
@@ -55,7 +73,8 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
 
   async function generate() {
     setError('');
-    for (let i = sections.length; i < themes.length; i++) {
+    let acc = sections;
+    for (let i = acc.length; i < themes.length; i++) {
       const t = themes[i];
       setCurrent(i);
       try {
@@ -69,7 +88,9 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
         });
         const data = await res.json();
         if (data.error || !data.interpretation) { setError(data.error ?? S.failed); break; }
-        setSections(prev => [...prev, { theme: t, text: data.interpretation }]);
+        acc = [...acc, { theme: t, text: data.interpretation }];
+        setSections(acc);
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(acc.map(s => ({ id: s.theme.id, text: s.text })))); } catch {}
       } catch { setError(S.failed); break; }
     }
     setCurrent(-1);

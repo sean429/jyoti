@@ -21,9 +21,21 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
   const [lastThemeId, setLastThemeId] = useState<string>('');
 
   const themeKey = theme ? theme.name + '-' + theme.d2 : 'general';
+  // Session cache: switching themes restores past readings for the same chart
+  // instead of burning another API call.
+  const cacheKey = `jyoti_interp_en|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${themeKey}`;
+
   useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { text, preview } = JSON.parse(cached);
+        setInterpretation(text); setIsPreview(!!preview); setGenerated(true); setLastThemeId(themeKey);
+        return;
+      }
+    } catch {}
     if (themeKey !== lastThemeId && generated) { setGenerated(false); setInterpretation(''); }
-  }, [themeKey]);
+  }, [cacheKey]);
 
   async function generate() {
     setLoading(true);
@@ -38,7 +50,10 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
       });
       const data = await res.json();
       if (data.error) setError(data.error);
-      else { setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true); }
+      else {
+        setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true);
+        try { sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.interpretation, preview: !!data.preview })); } catch {}
+      }
     } catch { setError('Connection error. Please try again.'); }
     setLoading(false);
   }
