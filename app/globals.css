@@ -282,4 +282,6 @@ h1, h2, h3, .font-cinzel { font-family: 'Cinzel', serif; }
   }
   .print-report h2 { border-bottom-color: rgba(201, 168, 76, 0.5) !important; break-after: avoid; }
   .print-report .ai-prose p { orphans: 3; widows: 3; }
+  .print-report .report-section { break-before: page; }
+  .print-report .report-section:first-of-type { break-before: auto; }
 }

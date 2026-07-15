@@ -7,6 +7,7 @@ import KundaliChart from '@/components/KundaliChart';
 import PlanetTable from '@/components/PlanetTable';
 import DashaTable from '@/components/DashaTable';
 import AIInterpretationZh from '@/components/AIInterpretationZh';
+import PremiumFullReport from '@/components/PremiumFullReport';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_ZH = [
@@ -75,6 +76,7 @@ export default function ZhKundaliPage() {
   const [paymentError, setPaymentError] = useState('');
   const [customQuestion, setCustomQuestion] = useState('');
   const [justUnlocked, setJustUnlocked] = useState(false);
+  const [fullReport, setFullReport] = useState(false);
 
   // Restore premium token from localStorage
   useEffect(() => {
@@ -492,6 +494,13 @@ export default function ZhKundaliPage() {
                               );
                             })}
                           </div>
+                          {unlockedThemes.length >= PREMIUM_THEMES_ZH.length && (
+                            <button onClick={() => setFullReport(!fullReport)}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
+                              {fullReport ? '↩ 查看单项主题' : '📕 5项主题完整报告（一份PDF）'}
+                            </button>
+                          )}
                           {unlockedThemes.length < PREMIUM_THEMES_ZH.length && (
                             <div className="mb-2">
                               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -564,6 +573,20 @@ export default function ZhKundaliPage() {
                           />
                         </div>
 
+                        {fullReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{
+                              name: birthInfo.name,
+                              date: `${birthInfo.year}年${birthInfo.month}月${birthInfo.day}日`,
+                              time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
+                              place: birthInfo.place,
+                            }}
+                            themes={PREMIUM_THEMES_ZH}
+                            premiumToken={premiumToken}
+                            lang='zh'
+                          />
+                        ) : (
                         <AIInterpretationZh
                           chart={chart}
                           birthInfo={{
@@ -575,6 +598,7 @@ export default function ZhKundaliPage() {
                           theme={aiTheme}
                           premiumToken={premiumToken || undefined}
                         />
+                        )}
                       </div>
                       );
                     })()}

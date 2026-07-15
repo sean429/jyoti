@@ -140,8 +140,10 @@ function verifyPremiumToken(token: string): { themes: string[]; exp: number } {
 // In-memory rate limiter — best-effort in serverless (resets per cold start).
 // Replace with Upstash/Vercel KV for cross-instance enforcement.
 // ---------------------------------------------------------------------------
+// RATE_MAX must comfortably exceed 5: the full-report mode fires 5 sequential
+// interpret calls, and fast generations can land inside one window.
 const RATE_WINDOW_MS = 60_000;
-const RATE_MAX       = 5;
+const RATE_MAX       = 8;
 const ipMap = new Map<string, { count: number; resetAt: number }>();
 
 function checkRateLimit(ip: string): boolean {

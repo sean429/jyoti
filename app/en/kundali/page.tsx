@@ -7,6 +7,7 @@ import KundaliChart from '@/components/KundaliChart';
 import PlanetTable from '@/components/PlanetTable';
 import DashaTable from '@/components/DashaTable';
 import AIInterpretation from '@/components/AIInterpretation';
+import PremiumFullReport from '@/components/PremiumFullReport';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES = [
@@ -47,6 +48,7 @@ export default function EnKundaliPage() {
   const [paymentError, setPaymentError] = useState('');
   const [customQuestion, setCustomQuestion] = useState('');
   const [justUnlocked, setJustUnlocked] = useState(false);
+  const [fullReport, setFullReport] = useState(false);
 
   // Restore premium token from localStorage
   useEffect(() => {
@@ -268,6 +270,13 @@ export default function EnKundaliPage() {
                               );
                             })}
                           </div>
+                          {unlockedThemes.length >= PREMIUM_THEMES_EN.length && (
+                            <button onClick={() => setFullReport(!fullReport)}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
+                              {fullReport ? '↩ View single themes' : '📕 Full 5-Theme Report (one PDF)'}
+                            </button>
+                          )}
                           {unlockedThemes.length < PREMIUM_THEMES_EN.length && (
                             <div className="mb-2">
                               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -340,12 +349,22 @@ export default function EnKundaliPage() {
                           />
                         </div>
 
+                        {fullReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
+                            themes={PREMIUM_THEMES_EN}
+                            premiumToken={premiumToken}
+                            lang='en'
+                          />
+                        ) : (
                         <AIInterpretation
                           chart={chart}
                           birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
                           theme={aiTheme}
                           premiumToken={premiumToken || undefined}
                         />
+                        )}
                       </div>
                       );
                     })()}
