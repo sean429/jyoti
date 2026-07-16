@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { redis, PREMIUM_THEME_IDS } from '@/lib/premium-server';
+import { redis, PREMIUM_THEME_IDS, Credits } from '@/lib/premium-server';
 
 const YEAR_SECONDS = 31_536_000; // purchase records live 1 year in Redis
 
@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
   const amount: number = o.pricing?.finalAmount ?? 0;
 
   let themes: string[] = [];
+  const credits: Credits = { std: 0, prem: 0 };
   if (contentId && (contentId === process.env.GROBLE_PRODUCT_ALL || contentId === process.env.GROBLE_PRODUCT_TRIO)) {
     themes = [...PREMIUM_THEME_IDS];
   } else {
@@ -106,19 +107,20 @@ export async function POST(req: NextRequest) {
       if (/통합|PDF|전체.*이용권|完整报告/i.test(optionText)) themes = [...PREMIUM_THEME_IDS];
       else if (/15개|15项/.test(optionText)) themes = [...ALL_STD_IDS];
     }
-    // 4) amount tiers: 12,900 = all 15 std, 9,900 = premium 5 (discounted all-pass),
-    //    any other paid-tier amount (single 2,000 upward) with an unreadable
-    //    answer = grant all 15 std rather than leave a paying buyer with nothing
+    // 4) amount tiers. All-pass amounts grant themes outright; the smaller
+    //    products grant credits the buyer spends on themes of their choice on
+    //    the site — Groble products need no options or question fields.
+    //    12,900 = all 15 std · 9,900+ = premium 5 (10,000 trio decoy included)
+    //    4,900+ = 5 std credits · 3,500+ = 1 prem credit · 1,900+ = 1 std credit
     if (!themes.length) {
       if (amount >= 12900) themes = [...ALL_STD_IDS];
       else if (amount >= 9900) themes = [...PREMIUM_THEME_IDS];
-      else if (amount >= 1900) {
-        console.warn('[groble-webhook] unmatched purchase, granting all std themes:', contentId, optionText);
-        themes = [...ALL_STD_IDS];
-      }
+      else if (amount >= 4900) credits.std = 5;
+      else if (amount >= 3500) credits.prem = 1;
+      else if (amount >= 1900) credits.std = 1;
     }
   }
-  if (!themes.length) {
+  if (!themes.length && !credits.std && !credits.prem) {
     console.error('[groble-webhook] no theme matched:', contentId, optionText);
     return NextResponse.json({ received: true, matched: false });
   }
@@ -129,16 +131,22 @@ export async function POST(req: NextRequest) {
     const at = o.payment?.purchasedAt ?? new Date().toISOString();
 
     if (orderId) {
-      await redis(['SET', `order:${orderId}`, JSON.stringify({ themes, email, at }), 'EX', YEAR_SECONDS]);
+      await redis(['SET', `order:${orderId}`, JSON.stringify({ themes, credits, email, at }), 'EX', YEAR_SECONDS]);
     }
     if (email) {
-      // Merge with earlier purchases so repeat buyers accumulate themes.
-      let merged = themes;
+      // Merge with earlier purchases so repeat buyers accumulate themes and credits.
+      let mergedThemes = themes;
+      const mergedCredits: Credits = { ...credits };
       const prev = await redis(['GET', `email:${email}`]);
       if (typeof prev === 'string') {
-        try { merged = [...new Set([...JSON.parse(prev).themes, ...themes])]; } catch {}
+        try {
+          const p = JSON.parse(prev);
+          mergedThemes = [...new Set([...(Array.isArray(p.themes) ? p.themes : []), ...themes])];
+          mergedCredits.std += p.credits?.std ?? 0;
+          mergedCredits.prem += p.credits?.prem ?? 0;
+        } catch {}
       }
-      await redis(['SET', `email:${email}`, JSON.stringify({ themes: merged, at }), 'EX', YEAR_SECONDS]);
+      await redis(['SET', `email:${email}`, JSON.stringify({ themes: mergedThemes, credits: mergedCredits, at }), 'EX', YEAR_SECONDS]);
     }
   } catch (err) {
     console.error('[groble-webhook] store error:', err instanceof Error ? err.message : err);

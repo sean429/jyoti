@@ -8,6 +8,7 @@ import PlanetTable from '@/components/PlanetTable';
 import DashaTable from '@/components/DashaTable';
 import AIInterpretationZh from '@/components/AIInterpretationZh';
 import PremiumFullReport from '@/components/PremiumFullReport';
+import CreditWallet from '@/components/CreditWallet';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_ZH = [
@@ -73,6 +74,7 @@ export default function ZhKundaliPage() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
   const [premiumToken, setPremiumToken] = useState('');
   const [unlockedThemes, setUnlockedThemes] = useState<string[]>([]);
+  const [credits, setCredits] = useState<{ std: number; prem: number }>({ std: 0, prem: 0 });
   const [claimCode, setClaimCode] = useState('');
   const [activePremium, setActivePremium] = useState<PremiumTheme | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -86,15 +88,31 @@ export default function ZhKundaliPage() {
     const saved = localStorage.getItem('jyoti_premium_token');
     const savedThemes = localStorage.getItem('jyoti_premium_themes');
     const savedExp = Number(localStorage.getItem('jyoti_premium_exp') ?? 0);
-    if (saved && savedThemes && savedExp > Date.now()) {
+    if (saved && savedExp > Date.now()) {
       setPremiumToken(saved);
-      setUnlockedThemes(savedThemes.split(','));
+      setUnlockedThemes((savedThemes ?? '').split(',').filter(Boolean));
+      try { setCredits(JSON.parse(localStorage.getItem('jyoti_premium_credits') ?? '')); } catch {}
     } else if (saved) {
       localStorage.removeItem('jyoti_premium_token');
       localStorage.removeItem('jyoti_premium_themes');
+      localStorage.removeItem('jyoti_premium_credits');
       localStorage.removeItem('jyoti_premium_exp');
     }
   }, []);
+
+  // Persists a token grant (from claim or use-credit) to state + localStorage.
+  function saveGrant(data: { token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number }) {
+    const c = { std: data.credits?.std ?? 0, prem: data.credits?.prem ?? 0 };
+    localStorage.setItem('jyoti_premium_token', data.token);
+    localStorage.setItem('jyoti_premium_themes', data.themes.join(','));
+    localStorage.setItem('jyoti_premium_credits', JSON.stringify(c));
+    localStorage.setItem('jyoti_premium_exp', String(data.exp));
+    setPremiumToken(data.token);
+    setUnlockedThemes(data.themes);
+    setCredits(c);
+    setJustUnlocked(true);
+    if (PREMIUM_THEMES_ZH.every(t => data.themes.includes(t.id))) setFullReport(true);
+  }
 
   // After paying on Groble, the buyer enters their order number or email here;
   // the server matches it against webhook-recorded purchases and issues a token.
@@ -111,16 +129,28 @@ export default function ZhKundaliPage() {
       });
       const data = await res.json();
       if (data.token) {
-        localStorage.setItem('jyoti_premium_token', data.token);
-        localStorage.setItem('jyoti_premium_themes', data.themes.join(','));
-        localStorage.setItem('jyoti_premium_exp', String(data.exp));
-        setPremiumToken(data.token);
-        setUnlockedThemes(data.themes);
-        setJustUnlocked(true);
+        saveGrant(data);
         setClaimCode('');
-        if (PREMIUM_THEMES_ZH.every(t => data.themes.includes(t.id))) setFullReport(true);
       } else setPaymentError(data.error ?? '未找到付款记录。');
     } catch { setPaymentError('验证失败，请稍后重试。'); }
+    setPaymentLoading(false);
+  }
+
+  // Spends one credit to permanently unlock the given theme id (stdN or premium).
+  async function handleUseCredit(themeId: string) {
+    if (!premiumToken) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/payment/use-credit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: premiumToken, theme: themeId, lang: 'zh' }),
+      });
+      const data = await res.json();
+      if (data.token) saveGrant(data);
+      else setPaymentError(data.error ?? '使用券使用失败。');
+    } catch { setPaymentError('使用券使用失败，请稍后重试。'); }
     setPaymentLoading(false);
   }
 
@@ -161,6 +191,7 @@ export default function ZhKundaliPage() {
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="stars-bg" />
+      <CreditWallet lang="zh" credits={credits} unlockedCount={unlockedThemes.length} />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }}
           className="sticky top-0 z-50">
@@ -479,10 +510,16 @@ export default function ZhKundaliPage() {
                               );
                             })}
                           </div>
+                          {selectedTheme && !unlockedThemes.includes('std' + selectedTheme.id) && credits.std > 0 && (
+                            <button onClick={() => handleUseCredit('std' + selectedTheme.id)} disabled={paymentLoading}
+                              className="btn-buy mt-3" style={{ display: 'inline-flex' }}>
+                              {paymentLoading ? '解锁中...' : `🎟 用使用券解锁「${selectedTheme.name}」· 剩余 ${credits.std} 张`}
+                            </button>
+                          )}
                           {!stdAllUnlocked && (
                             <div className="mt-3">
                               <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
-                                锁定的主题可先免费预览 — 完整解读在购买后用付款邮箱解锁
+                                锁定的主题可先免费预览 — 购买后输入付款邮箱即可充值使用券，自选主题解锁
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {GROBLE_URLS.stdSingle && (
@@ -535,6 +572,12 @@ export default function ZhKundaliPage() {
                             })}
                           </div>
                           )}
+                          {activePremium && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
+                            <button onClick={() => handleUseCredit(activePremium.id)} disabled={paymentLoading}
+                              className="btn-buy mb-2" style={{ display: 'inline-flex' }}>
+                              {paymentLoading ? '解锁中...' : `🎟 用使用券解锁「${activePremium.name}」· 剩余高级使用券 ${credits.prem} 张`}
+                            </button>
+                          )}
                           {premiumAllUnlocked && (
                             <button onClick={() => setFullReport(!fullReport)}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
@@ -565,7 +608,7 @@ export default function ZhKundaliPage() {
                                 📕 完整PDF报告：一次解读5个主题，生成带封面与章节的完整PDF报告
                               </p>
                               <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                                完成支付后，在下方输入付款时使用的邮箱或订单号即可解锁
+                                完成支付后，在下方输入付款时使用的邮箱或订单号即可充值使用券 — 自选主题解锁
                               </p>
                               <div className="flex gap-1.5 flex-wrap">
                                 <input

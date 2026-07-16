@@ -8,6 +8,7 @@ import PlanetTable from '@/components/PlanetTable';
 import DashaTable from '@/components/DashaTable';
 import AIInterpretationKo from '@/components/AIInterpretationKo';
 import PremiumFullReport from '@/components/PremiumFullReport';
+import CreditWallet from '@/components/CreditWallet';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_KO = [
@@ -74,6 +75,7 @@ export default function KoKundaliPage() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
   const [premiumToken, setPremiumToken] = useState('');
   const [unlockedThemes, setUnlockedThemes] = useState<string[]>([]);
+  const [credits, setCredits] = useState<{ std: number; prem: number }>({ std: 0, prem: 0 });
   const [claimCode, setClaimCode] = useState('');
   const [activePremium, setActivePremium] = useState<PremiumTheme | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -87,15 +89,31 @@ export default function KoKundaliPage() {
     const saved = localStorage.getItem('jyoti_premium_token');
     const savedThemes = localStorage.getItem('jyoti_premium_themes');
     const savedExp = Number(localStorage.getItem('jyoti_premium_exp') ?? 0);
-    if (saved && savedThemes && savedExp > Date.now()) {
+    if (saved && savedExp > Date.now()) {
       setPremiumToken(saved);
-      setUnlockedThemes(savedThemes.split(','));
+      setUnlockedThemes((savedThemes ?? '').split(',').filter(Boolean));
+      try { setCredits(JSON.parse(localStorage.getItem('jyoti_premium_credits') ?? '')); } catch {}
     } else if (saved) {
       localStorage.removeItem('jyoti_premium_token');
       localStorage.removeItem('jyoti_premium_themes');
+      localStorage.removeItem('jyoti_premium_credits');
       localStorage.removeItem('jyoti_premium_exp');
     }
   }, []);
+
+  // Persists a token grant (from claim or use-credit) to state + localStorage.
+  function saveGrant(data: { token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number }) {
+    const c = { std: data.credits?.std ?? 0, prem: data.credits?.prem ?? 0 };
+    localStorage.setItem('jyoti_premium_token', data.token);
+    localStorage.setItem('jyoti_premium_themes', data.themes.join(','));
+    localStorage.setItem('jyoti_premium_credits', JSON.stringify(c));
+    localStorage.setItem('jyoti_premium_exp', String(data.exp));
+    setPremiumToken(data.token);
+    setUnlockedThemes(data.themes);
+    setCredits(c);
+    setJustUnlocked(true);
+    if (PREMIUM_THEMES_KO.every(t => data.themes.includes(t.id))) setFullReport(true);
+  }
 
   // After paying on Groble, the buyer enters their order number or email here;
   // the server matches it against webhook-recorded purchases and issues a token.
@@ -112,16 +130,28 @@ export default function KoKundaliPage() {
       });
       const data = await res.json();
       if (data.token) {
-        localStorage.setItem('jyoti_premium_token', data.token);
-        localStorage.setItem('jyoti_premium_themes', data.themes.join(','));
-        localStorage.setItem('jyoti_premium_exp', String(data.exp));
-        setPremiumToken(data.token);
-        setUnlockedThemes(data.themes);
-        setJustUnlocked(true);
+        saveGrant(data);
         setClaimCode('');
-        if (PREMIUM_THEMES_KO.every(t => data.themes.includes(t.id))) setFullReport(true);
       } else setPaymentError(data.error ?? '결제 내역을 찾지 못했습니다.');
     } catch { setPaymentError('확인에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
+    setPaymentLoading(false);
+  }
+
+  // Spends one credit to permanently unlock the given theme id (stdN or premium).
+  async function handleUseCredit(themeId: string) {
+    if (!premiumToken) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/payment/use-credit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: premiumToken, theme: themeId, lang: 'ko' }),
+      });
+      const data = await res.json();
+      if (data.token) saveGrant(data);
+      else setPaymentError(data.error ?? '이용권 사용에 실패했습니다.');
+    } catch { setPaymentError('이용권 사용에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
     setPaymentLoading(false);
   }
 
@@ -162,6 +192,7 @@ export default function KoKundaliPage() {
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="stars-bg" />
+      <CreditWallet lang="ko" credits={credits} unlockedCount={unlockedThemes.length} />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }}
           className="sticky top-0 z-50">
@@ -484,10 +515,16 @@ export default function KoKundaliPage() {
                               );
                             })}
                           </div>
+                          {selectedTheme && !unlockedThemes.includes('std' + selectedTheme.id) && credits.std > 0 && (
+                            <button onClick={() => handleUseCredit('std' + selectedTheme.id)} disabled={paymentLoading}
+                              className="btn-buy mt-3" style={{ display: 'inline-flex' }}>
+                              {paymentLoading ? '여는 중...' : `🎟 이용권으로 '${selectedTheme.name}' 열기 · 남은 이용권 ${credits.std}장`}
+                            </button>
+                          )}
                           {!stdAllUnlocked && (
                             <div className="mt-3">
                               <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
-                                잠긴 테마는 무료 미리보기로 맛볼 수 있어요 — 전체 해석은 구매 후 결제 이메일로 열립니다
+                                잠긴 테마는 무료 미리보기로 맛볼 수 있어요 — 구매 후 결제 이메일을 입력하면 이용권이 충전되고, 원하는 테마를 골라 열 수 있어요
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {GROBLE_URLS.stdSingle && (
@@ -540,6 +577,12 @@ export default function KoKundaliPage() {
                             })}
                           </div>
                           )}
+                          {activePremium && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
+                            <button onClick={() => handleUseCredit(activePremium.id)} disabled={paymentLoading}
+                              className="btn-buy mb-2" style={{ display: 'inline-flex' }}>
+                              {paymentLoading ? '여는 중...' : `🎟 이용권으로 '${activePremium.name}' 열기 · 남은 프리미엄 이용권 ${credits.prem}장`}
+                            </button>
+                          )}
                           {premiumAllUnlocked && (
                             <button onClick={() => setFullReport(!fullReport)}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
@@ -570,7 +613,7 @@ export default function KoKundaliPage() {
                                 📕 통합 PDF 보고서: 5개 테마를 한 번에 해석해 표지·챕터가 갖춰진 PDF 한 권으로 저장할 수 있어요
                               </p>
                               <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                                결제 완료 후, 결제하신 이메일이나 주문번호를 아래에 입력하면 바로 열립니다
+                                결제 완료 후, 결제하신 이메일이나 주문번호를 아래에 입력하면 이용권이 충전됩니다 — 원하는 테마를 골라 여세요
                               </p>
                               <div className="flex gap-1.5 flex-wrap">
                                 <input

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, signToken } from '@/lib/premium-server';
+import { redis, signToken, Credits } from '@/lib/premium-server';
 
 const MESSAGES = {
   notFound: {
@@ -35,14 +35,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: MESSAGES.notFound[lk] }, { status: 404 });
     }
 
-    const { themes } = JSON.parse(raw) as { themes: string[] };
-    if (!Array.isArray(themes) || !themes.length) {
+    const rec = JSON.parse(raw) as { themes?: string[]; credits?: Partial<Credits> };
+    const themes = Array.isArray(rec.themes) ? rec.themes : [];
+    const credits: Credits = { std: rec.credits?.std ?? 0, prem: rec.credits?.prem ?? 0 };
+    if (!themes.length && !credits.std && !credits.prem) {
       return NextResponse.json({ error: MESSAGES.notFound[lk] }, { status: 404 });
     }
 
+    // code goes into the token so /api/payment/use-credit can find this record
     const exp = Date.now() + 86_400_000;
-    const token = signToken({ themes, exp });
-    return NextResponse.json({ token, themes, exp });
+    const token = signToken({ themes, credits, code, exp });
+    return NextResponse.json({ token, themes, credits, exp });
   } catch (err) {
     console.error('[payment/claim] error:', err instanceof Error ? err.message : err);
     return NextResponse.json({ error: MESSAGES.serverErr[lk] }, { status: 500 });
