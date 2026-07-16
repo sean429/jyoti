@@ -91,8 +91,11 @@ export async function POST(req: NextRequest) {
   if (contentId && (contentId === process.env.GROBLE_PRODUCT_ALL || contentId === process.env.GROBLE_PRODUCT_TRIO)) {
     themes = [...PREMIUM_THEME_IDS];
   } else {
-    // 1) exact std theme names picked in options/answers
-    themes = STD_THEME_NAMES.filter(([names]) => names.some(n => optionText.includes(n))).map(([, id]) => id);
+    // 1) exact std theme names picked in options/answers. Compared with all
+    //    whitespace stripped: picks arrive as free-text question answers, so
+    //    '돈의그릇' (missing space) must still match '돈의 그릇'.
+    const flatText = optionText.replace(/\s+/g, '');
+    themes = STD_THEME_NAMES.filter(([names]) => names.some(n => flatText.includes(n.replace(/\s+/g, '')))).map(([, id]) => id);
     // 2) premium deep-dive keywords (only when nothing std matched, to avoid
     //    e.g. '돈의 그릇' accidentally granting the premium career theme)
     if (!themes.length) {
@@ -104,12 +107,13 @@ export async function POST(req: NextRequest) {
       else if (/15개|15项/.test(optionText)) themes = [...ALL_STD_IDS];
     }
     // 4) amount tiers: 12,900 = all 15 std, 9,900 = premium 5 (discounted all-pass),
-    //    4,900+ unmatched = grant all 15 std rather than under-serve a buyer
+    //    any other paid-tier amount (single 2,000 upward) with an unreadable
+    //    answer = grant all 15 std rather than leave a paying buyer with nothing
     if (!themes.length) {
       if (amount >= 12900) themes = [...ALL_STD_IDS];
       else if (amount >= 9900) themes = [...PREMIUM_THEME_IDS];
-      else if (amount >= 4900) {
-        console.warn('[groble-webhook] unmatched mid-tier purchase, granting all std themes:', contentId, optionText);
+      else if (amount >= 1900) {
+        console.warn('[groble-webhook] unmatched purchase, granting all std themes:', contentId, optionText);
         themes = [...ALL_STD_IDS];
       }
     }
