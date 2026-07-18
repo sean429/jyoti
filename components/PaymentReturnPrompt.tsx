@@ -16,6 +16,7 @@ const STRINGS = {
     busy: '확인 중...',
     later: '나중에 할게요',
     fail: '결제 내역을 찾지 못했습니다. 결제 직후라면 1~2분 뒤 다시 시도해주세요.',
+    done: '✅ 결제가 확인됐어요 — 이용권이 충전됐습니다!',
   },
   zh: {
     title: '💳 已完成付款？',
@@ -25,6 +26,7 @@ const STRINGS = {
     busy: '验证中...',
     later: '稍后再说',
     fail: '未找到付款记录。如果您刚完成付款，请稍后重试。',
+    done: '✅ 已确认付款 — 使用券已到账！',
   },
   en: {
     title: '💳 Just finished paying?',
@@ -34,6 +36,7 @@ const STRINGS = {
     busy: 'Checking...',
     later: 'Maybe later',
     fail: 'No payment found. If you just paid, please try again in a minute.',
+    done: '✅ Payment confirmed — credits added!',
   },
 };
 
@@ -49,26 +52,35 @@ export default function PaymentReturnPrompt({ lang, onUnlocked }: {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     try {
-      // If the Groble return URL carries an order id (set the redirect to
-      // e.g. ...?order={merchantUid} and hope Groble substitutes it), claim it
-      // with zero input. An unsubstituted literal like "{merchantUid}" is
-      // filtered out and falls through to the manual prompt.
+      // Any order-ish param means the visitor arrived via the Groble payment
+      // redirect. A substituted id gets claimed with zero input — retried a
+      // few times because the webhook can land seconds after the redirect.
+      // An unsubstituted literal ("{merchantUid}") still opens the manual
+      // prompt instead of being silently ignored.
       const qs = new URLSearchParams(location.search);
-      const order = ['order', 'merchantUid', 'merchant_uid', 'orderId', 'oid']
+      const raw = ['order', 'merchantUid', 'merchant_uid', 'orderId', 'oid']
         .map(k => qs.get(k))
-        .find(v => v && v.length >= 8 && !/[{}]/.test(v));
+        .find(v => v != null);
+      const order = raw && raw.length >= 8 && !/[{}]/.test(raw) && !/merchantuid/i.test(raw) ? raw : null;
       if (order) {
-        doClaim(order).then(ok => {
-          if (ok) history.replaceState(null, '', location.pathname);
-          else setVisible(true);
-        });
+        void (async () => {
+          for (let i = 0; i < 3; i++) {
+            if (await doClaim(order)) {
+              history.replaceState(null, '', location.pathname);
+              return;
+            }
+            await new Promise(r => setTimeout(r, 2500));
+          }
+          setVisible(true);
+        })();
         return;
       }
       const pending = Number(localStorage.getItem(PENDING_KEY) ?? 0);
-      if (qs.has('paid') || (pending && Date.now() - pending < PENDING_WINDOW_MS)) setVisible(true);
+      if (raw != null || qs.has('paid') || (pending && Date.now() - pending < PENDING_WINDOW_MS)) setVisible(true);
     } catch {}
   }, []);
 
@@ -87,6 +99,8 @@ export default function PaymentReturnPrompt({ lang, onUnlocked }: {
         try { localStorage.removeItem(PENDING_KEY); } catch {}
         onUnlocked(data);
         setVisible(false);
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 5000);
         ok = true;
       } else setErr(data.error ?? s.fail);
     } catch { setErr(s.fail); }
@@ -103,6 +117,18 @@ export default function PaymentReturnPrompt({ lang, onUnlocked }: {
   function dismiss() {
     try { localStorage.removeItem(PENDING_KEY); } catch {}
     setVisible(false);
+  }
+
+  if (success) {
+    return (
+      <div className="no-print" style={{
+        position: 'fixed', top: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 80,
+        background: 'rgba(16,40,20,0.95)', border: '1px solid rgba(134,239,172,0.5)',
+        borderRadius: '10px', padding: '10px 18px', boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+      }}>
+        <p className="text-sm font-cinzel" style={{ color: '#86efac' }}>{s.done}</p>
+      </div>
+    );
   }
 
   if (!visible) return null;
