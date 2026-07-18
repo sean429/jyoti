@@ -521,7 +521,7 @@ export default function ZhKundaliPage() {
                           {!stdAllUnlocked && (
                             <div className="mt-3">
                               <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
-                                锁定的主题可先免费预览 — 购买后输入付款邮箱即可充值使用券，自选主题解锁
+                                锁定的主题可先免费预览 — 购买后输入付款手机号即可充值使用券，自选主题解锁
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {GROBLE_URLS.stdSingle && (
@@ -602,7 +602,7 @@ export default function ZhKundaliPage() {
                                 )}
                                 {GROBLE_URLS.all && (
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
-                                    🏆 推荐 · 📕 完整PDF报告 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900 · 省24%
+                                    🏆 推荐 · 📕 完整PDF报告 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900 · 立减₩24,000
                                   </a>
                                 )}
                               </div>
@@ -610,14 +610,14 @@ export default function ZhKundaliPage() {
                                 📕 完整PDF报告：一次解读5个主题，生成带封面与章节的完整PDF报告
                               </p>
                               <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                                完成支付后，在下方输入付款时使用的邮箱或订单号即可充值使用券 — 自选主题解锁
+                                完成支付后，在下方输入付款手机号即可充值使用券 — 自选主题解锁
                               </p>
                               <div className="flex gap-1.5 flex-wrap">
                                 <input
                                   value={claimCode}
                                   onChange={e => setClaimCode(e.target.value)}
                                   onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
-                                  placeholder="付款邮箱或订单号"
+                                  placeholder="付款手机号（或邮箱·订单号）"
                                   className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
                                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(167,139,250,0.25)', color: 'var(--text)' }}
                                 />

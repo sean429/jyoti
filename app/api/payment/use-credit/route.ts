@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, signToken, verifyToken, Credits, PREMIUM_THEME_IDS } from '@/lib/premium-server';
+import { redis, signToken, verifyToken, recordKey, Credits, PREMIUM_THEME_IDS } from '@/lib/premium-server';
 
 const YEAR_SECONDS = 31_536_000;
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: MESSAGES.tokenErr[lk] }, { status: 403 });
     }
 
-    const key = code.includes('@') ? `email:${code}` : `order:${code}`;
+    const key = recordKey(code);
     const raw = await redis(['GET', key]);
     if (typeof raw !== 'string') {
       return NextResponse.json({ error: MESSAGES.tokenErr[lk] }, { status: 404 });

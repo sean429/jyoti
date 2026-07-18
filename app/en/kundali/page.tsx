@@ -336,7 +336,7 @@ export default function EnKundaliPage() {
                                 )}
                                 {GROBLE_URLS.all && (
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
-                                    🏆 📕 Full PDF Report <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900 · 24% off
+                                    🏆 📕 Full PDF Report <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900 · ₩24,000 off
                                   </a>
                                 )}
                               </div>
@@ -344,14 +344,14 @@ export default function EnKundaliPage() {
                                 📕 Full PDF Report: all 5 themes read in one go, saved as a single PDF with cover and chapters
                               </p>
                               <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                                After paying, enter the email or order number you used below to unlock instantly
+                                After paying, enter the phone number you used at checkout below to unlock instantly
                               </p>
                               <div className="flex gap-1.5 flex-wrap">
                                 <input
                                   value={claimCode}
                                   onChange={e => setClaimCode(e.target.value)}
                                   onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
-                                  placeholder="Payment email or order number"
+                                  placeholder="Payment phone number (or email / order no.)"
                                   className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
                                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(167,139,250,0.25)', color: 'var(--text)' }}
                                 />

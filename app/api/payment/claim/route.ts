@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, signToken, Credits } from '@/lib/premium-server';
+import { redis, signToken, recordKey, Credits } from '@/lib/premium-server';
 
 const MESSAGES = {
   notFound: {
@@ -29,8 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: MESSAGES.notFound[lk] }, { status: 400 });
     }
 
-    const key = code.includes('@') ? `email:${code}` : `order:${code}`;
-    const raw = await redis(['GET', key]);
+    const raw = await redis(['GET', recordKey(code)]);
     if (typeof raw !== 'string') {
       return NextResponse.json({ error: MESSAGES.notFound[lk] }, { status: 404 });
     }

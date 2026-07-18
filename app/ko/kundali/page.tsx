@@ -526,7 +526,7 @@ export default function KoKundaliPage() {
                           {!stdAllUnlocked && (
                             <div className="mt-3">
                               <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
-                                잠긴 테마는 무료 미리보기로 맛볼 수 있어요 — 구매 후 결제 이메일을 입력하면 이용권이 충전되고, 원하는 테마를 골라 열 수 있어요
+                                잠긴 테마는 무료 미리보기로 맛볼 수 있어요 — 구매 후 결제하신 전화번호를 입력하면 이용권이 충전되고, 원하는 테마를 골라 열 수 있어요
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {GROBLE_URLS.stdSingle && (
@@ -607,7 +607,7 @@ export default function KoKundaliPage() {
                                 )}
                                 {GROBLE_URLS.all && (
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
-                                    🏆 추천 · 📕 통합 PDF 보고서 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900 · 24%↓
+                                    🏆 추천 · 📕 통합 PDF 보고서 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900 · ₩24,000 할인
                                   </a>
                                 )}
                               </div>
@@ -615,14 +615,14 @@ export default function KoKundaliPage() {
                                 📕 통합 PDF 보고서: 5개 테마를 한 번에 해석해 표지·챕터가 갖춰진 PDF 한 권으로 저장할 수 있어요
                               </p>
                               <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                                결제 완료 후, 결제하신 이메일이나 주문번호를 아래에 입력하면 이용권이 충전됩니다 — 원하는 테마를 골라 여세요
+                                결제 완료 후, 결제하신 전화번호를 아래에 입력하면 이용권이 충전됩니다 — 원하는 테마를 골라 여세요
                               </p>
                               <div className="flex gap-1.5 flex-wrap">
                                 <input
                                   value={claimCode}
                                   onChange={e => setClaimCode(e.target.value)}
                                   onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
-                                  placeholder="결제하신 이메일 또는 주문번호"
+                                  placeholder="결제하신 전화번호 (또는 이메일·주문번호)"
                                   className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
                                   style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(167,139,250,0.25)', color: 'var(--text)' }}
                                 />

@@ -11,6 +11,16 @@ export const PREMIUM_THEME_IDS = ['career', 'love', 'health', 'yearly', 'family'
 // std credits open the 15 divisional themes, prem credits the 5 deep-dive ones.
 export type Credits = { std: number; prem: number };
 
+// Claim codes can be an email, the phone number used at Groble checkout
+// (always collected there, unlike email), or an order number. All three are
+// written by the webhook; this maps a code to its Redis key.
+export function recordKey(code: string): string {
+  if (code.includes('@')) return `email:${code}`;
+  const digits = code.replace(/[^0-9]/g, '');
+  if (/^01[016789][0-9]{7,8}$/.test(digits)) return `phone:${digits}`;
+  return `order:${code}`;
+}
+
 // Stateless HMAC-signed token: base64url(payload).base64url(signature)
 // Verified in /api/interpret — payload shape must stay { themes: string[], exp: number };
 // extra fields (credits, code) are ignored there and used by /api/payment/use-credit.

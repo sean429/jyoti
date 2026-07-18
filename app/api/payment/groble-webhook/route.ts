@@ -130,16 +130,26 @@ export async function POST(req: NextRequest) {
   try {
     const orderId = String(o.merchantUid ?? '').trim().toLowerCase();
     const email = String(o.buyer?.email ?? '').trim().toLowerCase();
+    const phone = String(o.buyer?.phoneNumber ?? '').replace(/[^0-9]/g, '');
     const at = o.payment?.purchasedAt ?? new Date().toISOString();
+
+    // Observability for real-payment testing — identifies the payload shape
+    // without logging full PII.
+    console.log('[groble-webhook] payment:', JSON.stringify({
+      uid: orderId, amount, title: o.content?.title ?? '',
+      hasEmail: !!email, phoneTail: phone.slice(-4), themes, credits,
+    }));
 
     if (orderId) {
       await redis(['SET', `order:${orderId}`, JSON.stringify({ themes, credits, email, at }), 'EX', YEAR_SECONDS]);
     }
-    if (email) {
-      // Merge with earlier purchases so repeat buyers accumulate themes and credits.
+    // Merge with earlier purchases on identity keys so repeat buyers accumulate
+    // themes and credits. Phone is stored because Groble checkout always
+    // collects it, while email exists only for Groble members.
+    const mergeInto = async (key: string) => {
       let mergedThemes = themes;
       const mergedCredits: Credits = { ...credits };
-      const prev = await redis(['GET', `email:${email}`]);
+      const prev = await redis(['GET', key]);
       if (typeof prev === 'string') {
         try {
           const p = JSON.parse(prev);
@@ -148,8 +158,10 @@ export async function POST(req: NextRequest) {
           mergedCredits.prem += p.credits?.prem ?? 0;
         } catch {}
       }
-      await redis(['SET', `email:${email}`, JSON.stringify({ themes: mergedThemes, credits: mergedCredits, at }), 'EX', YEAR_SECONDS]);
-    }
+      await redis(['SET', key, JSON.stringify({ themes: mergedThemes, credits: mergedCredits, at }), 'EX', YEAR_SECONDS]);
+    };
+    if (email) await mergeInto(`email:${email}`);
+    if (/^01[016789][0-9]{7,8}$/.test(phone)) await mergeInto(`phone:${phone}`);
   } catch (err) {
     console.error('[groble-webhook] store error:', err instanceof Error ? err.message : err);
     // Non-2xx so Groble retries the delivery if it supports retry.
