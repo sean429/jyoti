@@ -10,6 +10,7 @@ import AIInterpretation from '@/components/AIInterpretation';
 import PremiumFullReport from '@/components/PremiumFullReport';
 import CreditWallet from '@/components/CreditWallet';
 import LiveCounter from '@/components/LiveCounter';
+import PaymentReturnPrompt from '@/components/PaymentReturnPrompt';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES = [
@@ -106,6 +107,12 @@ export default function EnKundaliPage() {
     setPaymentLoading(false);
   }
 
+  // Stamped when a buy button opens Groble, so the return-prompt greets the
+  // buyer when they come back to this page after paying.
+  function markPendingBuy() {
+    try { localStorage.setItem('jyoti_pending_buy', String(Date.now())); } catch {}
+  }
+
   // Spends one credit to permanently unlock the given premium theme.
   async function handleUseCredit(themeId: string) {
     if (!premiumToken) return;
@@ -144,6 +151,7 @@ export default function EnKundaliPage() {
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="stars-bg" />
       <CreditWallet lang="en" credits={credits} unlockedCount={unlockedThemes.length} />
+      <PaymentReturnPrompt lang="en" onUnlocked={saveGrant} />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }} className="sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -325,17 +333,17 @@ export default function EnKundaliPage() {
                             <div className="mb-2">
                               <div className="flex flex-wrap gap-2 mb-2 items-center">
                                 {GROBLE_URLS.single && (
-                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
                                     💳 1 theme ₩3,900
                                   </a>
                                 )}
                                 {GROBLE_URLS.trio && (
-                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
                                     💳 3 themes ₩10,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.all && (
-                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
                                     🏆 📕 Full PDF Report <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900 · ₩24,000 off
                                   </a>
                                 )}

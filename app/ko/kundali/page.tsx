@@ -10,6 +10,7 @@ import AIInterpretationKo from '@/components/AIInterpretationKo';
 import PremiumFullReport from '@/components/PremiumFullReport';
 import CreditWallet from '@/components/CreditWallet';
 import LiveCounter from '@/components/LiveCounter';
+import PaymentReturnPrompt from '@/components/PaymentReturnPrompt';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_KO = [
@@ -138,6 +139,12 @@ export default function KoKundaliPage() {
     setPaymentLoading(false);
   }
 
+  // Stamped when a buy button opens Groble, so the return-prompt greets the
+  // buyer when they come back to this page after paying.
+  function markPendingBuy() {
+    try { localStorage.setItem('jyoti_pending_buy', String(Date.now())); } catch {}
+  }
+
   // Spends one credit to permanently unlock the given theme id (stdN or premium).
   async function handleUseCredit(themeId: string) {
     if (!premiumToken) return;
@@ -194,6 +201,7 @@ export default function KoKundaliPage() {
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="stars-bg" />
       <CreditWallet lang="ko" credits={credits} unlockedCount={unlockedThemes.length} />
+      <PaymentReturnPrompt lang="ko" onUnlocked={saveGrant} />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }}
           className="sticky top-0 z-50">
@@ -530,17 +538,17 @@ export default function KoKundaliPage() {
                               </p>
                               <div className="flex flex-wrap gap-2">
                                 {GROBLE_URLS.stdSingle && (
-                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
                                     💳 테마 1개 ₩2,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.stdFive && (
-                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
                                     💳 테마 5개 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩10,000</s> ₩5,000 · 50%↓
                                   </a>
                                 )}
                                 {GROBLE_URLS.stdAll && (
-                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
+                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
                                     💳 15개 전부 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩30,000</s> ₩12,900 · 57%↓
                                   </a>
                                 )}
@@ -596,17 +604,17 @@ export default function KoKundaliPage() {
                             <div className="mb-2">
                               <div className="flex flex-wrap gap-2 mb-2 items-center">
                                 {GROBLE_URLS.single && (
-                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
                                     💳 테마 1개 ₩3,900
                                   </a>
                                 )}
                                 {GROBLE_URLS.trio && (
-                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" className="btn-buy">
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
                                     💳 테마 3개 ₩10,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.all && (
-                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
                                     🏆 추천 · 📕 통합 PDF 보고서 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900 · ₩24,000 할인
                                   </a>
                                 )}
