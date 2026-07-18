@@ -493,27 +493,28 @@ export default function ZhKundaliPage() {
                             <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>选择解读主题 — 综合解读免费</p>
                             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>深度主题 单项 ₩2,000 · 5项 ₩5,000 · 15项 ₩12,900</p>
                           </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            <button
-                              onClick={() => { setSelectedTheme(null); setActivePremium(null); }}
-                              className="px-2 py-1 rounded text-xs font-cinzel transition-all"
-                              style={{
-                                background: !selectedTheme && !activePremium ? 'rgba(201,168,76,0.2)' : 'transparent',
-                                border: '1px solid rgba(201,168,76,0.2)',
-                                color: !selectedTheme && !activePremium ? 'var(--gold-light)' : 'var(--text-muted)',
-                              }}>
-                              综合解读（免费）
-                            </button>
+                          <button
+                            onClick={() => { setSelectedTheme(null); setActivePremium(null); }}
+                            className="w-full px-2 py-1.5 mb-2 rounded text-xs font-cinzel transition-all"
+                            style={{
+                              background: !selectedTheme && !activePremium ? 'rgba(201,168,76,0.2)' : 'transparent',
+                              border: '1px solid rgba(201,168,76,0.2)',
+                              color: !selectedTheme && !activePremium ? 'var(--gold-light)' : 'var(--text-muted)',
+                            }}>
+                            ✦ 综合解读（免费）
+                          </button>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(128px, 1fr))', gap: '6px' }}>
                             {THEMES.map(t => {
                               const unlocked = unlockedThemes.includes('std' + t.id);
                               return (
                               <button key={t.id}
                                 onClick={() => { setSelectedTheme(t); setActivePremium(null); }}
-                                className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                className="px-2 py-1.5 rounded text-xs font-cinzel transition-all text-center"
                                 style={{
                                   background: selectedTheme?.id === t.id ? 'rgba(201,168,76,0.2)' : 'transparent',
                                   border: '1px solid rgba(201,168,76,0.2)',
                                   color: selectedTheme?.id === t.id || unlocked ? 'var(--gold-light)' : 'var(--text-muted)',
+                                  whiteSpace: 'nowrap',
                                 }}>
                                 {t.name} {unlocked ? '🔓' : '🔒'}
                               </button>
