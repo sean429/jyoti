@@ -110,10 +110,12 @@ export async function POST(req: NextRequest) {
     // 4) amount tiers. All-pass amounts grant themes outright; the smaller
     //    products grant credits the buyer spends on themes of their choice on
     //    the site — Groble products need no options or question fields.
-    //    12,900 = all 15 std · 9,900+ = premium 5 (10,000 trio decoy included)
+    //    14,900 = premium 5 (PDF report) · 12,900 = all 15 std
+    //    9,900+ = premium 5 (pre-raise price + 10,000 trio decoy)
     //    4,900+ = 5 std credits · 3,500+ = 1 prem credit · 1,900+ = 1 std credit
     if (!themes.length) {
-      if (amount >= 12900) themes = [...ALL_STD_IDS];
+      if (amount >= 14900) themes = [...PREMIUM_THEME_IDS];
+      else if (amount >= 12900) themes = [...ALL_STD_IDS];
       else if (amount >= 9900) themes = [...PREMIUM_THEME_IDS];
       else if (amount >= 4900) credits.std = 5;
       else if (amount >= 3500) credits.prem = 1;

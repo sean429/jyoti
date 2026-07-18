@@ -547,7 +547,7 @@ export default function ZhKundaliPage() {
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                             <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 高级深度解读</p>
-                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>单项 ₩3,900 · 全部 ₩9,900</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>单项 ₩3,900 · 全部 ₩14,900</p>
                           </div>
                           {!fullReport && (
                           <div className="flex flex-wrap gap-1.5 mb-2">
@@ -600,7 +600,7 @@ export default function ZhKundaliPage() {
                                 )}
                                 {GROBLE_URLS.all && (
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
-                                    📕 完整PDF报告 · 全部5项 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩12,900</s> ₩9,900
+                                    📕 完整PDF报告 · 全部5项 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900
                                   </a>
                                 )}
                               </div>
