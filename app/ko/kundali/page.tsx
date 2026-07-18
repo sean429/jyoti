@@ -9,6 +9,7 @@ import DashaTable from '@/components/DashaTable';
 import AIInterpretationKo from '@/components/AIInterpretationKo';
 import PremiumFullReport from '@/components/PremiumFullReport';
 import CreditWallet from '@/components/CreditWallet';
+import LiveCounter from '@/components/LiveCounter';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_KO = [
@@ -481,6 +482,7 @@ export default function KoKundaliPage() {
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-4">
                           <span className="ornament">AI 운세 해석 보기</span>
                         </h3>
+                        <LiveCounter lang="ko" />
                         {/* Theme picker for AI */}
                         {!fullReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
@@ -534,12 +536,12 @@ export default function KoKundaliPage() {
                                 )}
                                 {GROBLE_URLS.stdFive && (
                                   <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" className="btn-buy">
-                                    💳 테마 5개 ₩5,000
+                                    💳 테마 5개 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩10,000</s> ₩5,000 · 50%↓
                                   </a>
                                 )}
                                 {GROBLE_URLS.stdAll && (
                                   <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
-                                    💳 15개 전부 ₩12,900
+                                    💳 15개 전부 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩30,000</s> ₩12,900 · 57%↓
                                   </a>
                                 )}
                               </div>
@@ -605,7 +607,7 @@ export default function KoKundaliPage() {
                                 )}
                                 {GROBLE_URLS.all && (
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
-                                    📕 통합 PDF 보고서 · 5개 전체 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900
+                                    🏆 추천 · 📕 통합 PDF 보고서 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900 · 24%↓
                                   </a>
                                 )}
                               </div>

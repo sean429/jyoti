@@ -9,6 +9,7 @@ import DashaTable from '@/components/DashaTable';
 import AIInterpretation from '@/components/AIInterpretation';
 import PremiumFullReport from '@/components/PremiumFullReport';
 import CreditWallet from '@/components/CreditWallet';
+import LiveCounter from '@/components/LiveCounter';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES = [
@@ -277,6 +278,7 @@ export default function EnKundaliPage() {
                       return (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-5"><span className="ornament">AI Vedic Reading</span></h3>
+                        <LiveCounter lang="en" />
 
                         {/* Premium themes */}
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
@@ -334,7 +336,7 @@ export default function EnKundaliPage() {
                                 )}
                                 {GROBLE_URLS.all && (
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
-                                    📕 Full PDF Report · All 5 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900
+                                    🏆 📕 Full PDF Report <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900 · 24% off
                                   </a>
                                 )}
                               </div>

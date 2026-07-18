@@ -12,6 +12,16 @@ interface Props {
   premiumToken?: string;
 }
 
+// Staged loading theater — real steps happen server-side in one call, but
+// walking through them builds anticipation while Gemini generates.
+const LOADING_STAGES = [
+  '🔭 正在计算行星位置...',
+  '🏠 正在分析宫位布局...',
+  '🌙 正在确认大运流转...',
+  '📜 正在解读纳克沙特拉...',
+  '✍️ 纳尼玛正在书写解读...',
+];
+
 export default function AIInterpretationZh({ chart, birthInfo, theme, premiumToken }: Props) {
   const [interpretation, setInterpretation] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +29,26 @@ export default function AIInterpretationZh({ chart, birthInfo, theme, premiumTok
   const [generated, setGenerated] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
   const [lastThemeId, setLastThemeId] = useState<string>('');
+  const [stage, setStage] = useState(0);
+  const [shareMsg, setShareMsg] = useState('');
+
+  useEffect(() => {
+    if (!loading) return;
+    setStage(0);
+    const t = setInterval(() => setStage(s => Math.min(s + 1, LOADING_STAGES.length - 1)), 2400);
+    return () => clearInterval(t);
+  }, [loading]);
+
+  async function share() {
+    const url = `${location.origin}/zh/kundali`;
+    const text = '我在 Jyoti 用吠陀占星看了免费综合运势 — 想知道你出生那一刻的星空吗';
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Jyoti 吠陀占星', text, url }); return; }
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setShareMsg('链接已复制！');
+      setTimeout(() => setShareMsg(''), 2500);
+    } catch {}
+  }
 
   const themeKey = theme ? theme.name + '-' + theme.d2 : 'general';
   // Session cache: switching themes restores past readings for the same chart
@@ -151,8 +181,14 @@ export default function AIInterpretationZh({ chart, birthInfo, theme, premiumTok
             </svg>
             <div className='absolute inset-0 flex items-center justify-center text-2xl'>🔮</div>
           </div>
-          <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>正在解读星盘语言...</p>
+          <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>{LOADING_STAGES[stage]}</p>
           <p className='text-xs mt-1' style={{ color: 'var(--text-muted)' }}>正在解析{birthInfo.name}的宇宙蓝图</p>
+          <div className='flex justify-center gap-1.5 mt-3'>
+            {LOADING_STAGES.map((_, i) => (
+              <div key={i} className='w-1.5 h-1.5 rounded-full transition-all'
+                style={{ background: i <= stage ? 'var(--gold)' : 'rgba(201,168,76,0.2)' }} />
+            ))}
+          </div>
         </div>
       )}
       {error && (
@@ -206,6 +242,9 @@ export default function AIInterpretationZh({ chart, birthInfo, theme, premiumTok
                 style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
                 onClick={() => window.print()}>📄 保存为PDF</button>
             )}
+            <button className='text-xs font-cinzel px-4 py-2 rounded-lg hover:opacity-80'
+              style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
+              onClick={share}>{shareMsg || '🔗 分享'}</button>
           </div>
         </div>
       )}

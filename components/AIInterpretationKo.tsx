@@ -12,6 +12,16 @@ interface Props {
   premiumToken?: string;
 }
 
+// Staged loading theater — real steps happen server-side in one call, but
+// walking through them builds anticipation while Gemini generates.
+const LOADING_STAGES = [
+  '🔭 행성 위치를 계산하는 중...',
+  '🏠 하우스 배치를 분석하는 중...',
+  '🌙 다샤의 흐름을 확인하는 중...',
+  '📜 나크샤트라를 읽는 중...',
+  '✍️ 나니마가 해석을 적는 중...',
+];
+
 export default function AIInterpretationKo({ chart, birthInfo, theme, premiumToken }: Props) {
   const [interpretation, setInterpretation] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +29,26 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
   const [generated, setGenerated] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
   const [lastThemeId, setLastThemeId] = useState<string>('');
+  const [stage, setStage] = useState(0);
+  const [shareMsg, setShareMsg] = useState('');
+
+  useEffect(() => {
+    if (!loading) return;
+    setStage(0);
+    const t = setInterval(() => setStage(s => Math.min(s + 1, LOADING_STAGES.length - 1)), 2400);
+    return () => clearInterval(t);
+  }, [loading]);
+
+  async function share() {
+    const url = `${location.origin}/ko/kundali`;
+    const text = 'Jyoti에서 베딕 점성술로 무료 종합 운세를 봤어요 — 태어난 순간의 하늘이 궁금하다면';
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Jyoti 베딕 운세', text, url }); return; }
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setShareMsg('링크를 복사했어요!');
+      setTimeout(() => setShareMsg(''), 2500);
+    } catch {}
+  }
 
   const themeKey = theme ? theme.name + '-' + theme.d2 : 'general';
   // Session cache: switching themes (or tabs) restores past readings for the
@@ -152,8 +182,14 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
             </svg>
             <div className='absolute inset-0 flex items-center justify-center text-2xl'>🔮</div>
           </div>
-          <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>별자리의 언어를 해석하는 중...</p>
+          <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>{LOADING_STAGES[stage]}</p>
           <p className='text-xs mt-1' style={{ color: 'var(--text-muted)' }}>{birthInfo.name}님의 우주적 청사진을 풀어냅니다</p>
+          <div className='flex justify-center gap-1.5 mt-3'>
+            {LOADING_STAGES.map((_, i) => (
+              <div key={i} className='w-1.5 h-1.5 rounded-full transition-all'
+                style={{ background: i <= stage ? 'var(--gold)' : 'rgba(201,168,76,0.2)' }} />
+            ))}
+          </div>
         </div>
       )}
       {error && (
@@ -208,6 +244,9 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
                 style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
                 onClick={() => window.print()}>📄 PDF로 저장</button>
             )}
+            <button className='text-xs font-cinzel px-4 py-2 rounded-lg hover:opacity-80'
+              style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
+              onClick={share}>{shareMsg || '🔗 공유하기'}</button>
           </div>
         </div>
       )}

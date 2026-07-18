@@ -9,6 +9,7 @@ import DashaTable from '@/components/DashaTable';
 import AIInterpretationZh from '@/components/AIInterpretationZh';
 import PremiumFullReport from '@/components/PremiumFullReport';
 import CreditWallet from '@/components/CreditWallet';
+import LiveCounter from '@/components/LiveCounter';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_ZH = [
@@ -477,6 +478,7 @@ export default function ZhKundaliPage() {
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-4">
                           <span className="ornament">AI命盘解读</span>
                         </h3>
+                        <LiveCounter lang="zh" />
                         {!fullReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
@@ -529,12 +531,12 @@ export default function ZhKundaliPage() {
                                 )}
                                 {GROBLE_URLS.stdFive && (
                                   <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" className="btn-buy">
-                                    💳 5项主题 ₩5,000
+                                    💳 5项主题 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩10,000</s> ₩5,000 · 省50%
                                   </a>
                                 )}
                                 {GROBLE_URLS.stdAll && (
                                   <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
-                                    💳 全部15项 ₩12,900
+                                    💳 全部15项 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩30,000</s> ₩12,900 · 省57%
                                   </a>
                                 )}
                               </div>
@@ -600,7 +602,7 @@ export default function ZhKundaliPage() {
                                 )}
                                 {GROBLE_URLS.all && (
                                   <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" className="btn-buy btn-buy-best">
-                                    📕 完整PDF报告 · 全部5项 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900
+                                    🏆 推荐 · 📕 完整PDF报告 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,500</s> ₩14,900 · 省24%
                                   </a>
                                 )}
                               </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import crypto from 'crypto';
+import { redis } from '@/lib/premium-server';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -490,6 +491,16 @@ ${lang === 'ko' ? 'return only Korean.' : lang === 'zh' ? 'return only Simplifie
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
+
+    // Fire-and-forget usage counters for the "N read their stars today" line —
+    // never let stats failures affect the reading itself.
+    try {
+      const day = new Date().toISOString().slice(0, 10);
+      void redis(['INCR', `stats:reads:${day}`]).then(n => {
+        if (n === 1) void redis(['EXPIRE', `stats:reads:${day}`, 172_800]).catch(() => {});
+      }).catch(() => {});
+      void redis(['INCR', 'stats:reads:total']).catch(() => {});
+    } catch {}
 
     return NextResponse.json({ interpretation: text, preview: previewMode });
   } catch (err) {
