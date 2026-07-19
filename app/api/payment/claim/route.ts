@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, signToken, recordKey, Credits } from '@/lib/premium-server';
+import { redis, signToken, recordKey, Credits, PREMIUM_THEME_IDS } from '@/lib/premium-server';
 
 const MESSAGES = {
   notFound: {
@@ -27,6 +27,17 @@ export async function POST(req: NextRequest) {
     const code = String(body.code ?? '').trim().toLowerCase();
     if (!code || code.length > 200) {
       return NextResponse.json({ error: MESSAGES.notFound[lk] }, { status: 400 });
+    }
+
+    // Master/tester code (env MASTER_CODE): refreshes a record with every
+    // theme unlocked plus 999/999 credits — for debugging and marketing
+    // demos, never runs dry, rotatable by changing the env var.
+    if (process.env.MASTER_CODE && code === process.env.MASTER_CODE.trim().toLowerCase()) {
+      await redis(['SET', recordKey(code), JSON.stringify({
+        themes: [...PREMIUM_THEME_IDS, ...Array.from({ length: 15 }, (_, i) => 'std' + (i + 1))],
+        credits: { std: 999, prem: 999 },
+        at: new Date().toISOString(),
+      }), 'EX', 31_536_000]);
     }
 
     const raw = await redis(['GET', recordKey(code)]);
