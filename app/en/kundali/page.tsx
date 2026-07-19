@@ -29,13 +29,25 @@ const PREMIUM_THEMES_EN = [
   { id: 'family', name: 'Children & Family', icon: '🏠', d2: 7, desc: 'Deep-dive into children and family. Based on D1+D7, reveal child connections, relationship patterns with parents and siblings, and family influences.' },
 ] as const;
 
-type PremiumTheme = typeof PREMIUM_THEMES_EN[number];
+// Chapters of the love-focused PDF report (ids love1..love5 gate server-side)
+const LOVE_THEMES_EN = [
+  { id: 'love1', name: 'Future Spouse Portrait', icon: '💘', d2: 9, desc: 'Sketch the first impression, vibe, style and temperament of my future spouse — paint them vividly.' },
+  { id: 'love2', name: 'The Timing of Love',     icon: '⏳', d2: 9, desc: 'Read when love switches on and the marriage window from the dasha flow — what season am I in now?' },
+  { id: 'love3', name: 'The Meeting Scenario',   icon: '🗺️', d2: 9, desc: 'Where and how do we meet? Paint the scene and route of the first meeting.' },
+  { id: 'love4', name: 'Your Charm Blueprint',   icon: '🌹', d2: 9, desc: 'What is my charm that works on others, when does it switch on and off?' },
+  { id: 'love5', name: 'Spotting Bad Bonds',     icon: '🕯️', d2: 9, desc: 'My repeating bad-bond pattern, its early signals, and what makes love last.' },
+] as const;
+
+// Both the 5 deep-dive themes and the love-report chapters flow through the
+// same selection state.
+type PremiumTheme = { id: string; name: string; icon: string; d2: number; desc: string };
 
 // Groble product page links (set in Vercel env, inlined at build time)
 const GROBLE_URLS = {
   single: process.env.NEXT_PUBLIC_GROBLE_SINGLE_URL ?? '',
   trio: process.env.NEXT_PUBLIC_GROBLE_TRIO_URL ?? '',
   all: process.env.NEXT_PUBLIC_GROBLE_ALL_URL ?? '',
+  love: process.env.NEXT_PUBLIC_GROBLE_LOVE_URL ?? '',
 };
 
 export default function EnKundaliPage() {
@@ -54,6 +66,7 @@ export default function EnKundaliPage() {
   const [customQuestion, setCustomQuestion] = useState('');
   const [justUnlocked, setJustUnlocked] = useState(false);
   const [fullReport, setFullReport] = useState(false);
+  const [loveReport, setLoveReport] = useState(false);
 
   // Restore premium token from localStorage
   useEffect(() => {
@@ -84,6 +97,7 @@ export default function EnKundaliPage() {
     setCredits(c);
     setJustUnlocked(true);
     if (PREMIUM_THEMES_EN.every(t => data.themes.includes(t.id))) setFullReport(true);
+    else if (LOVE_THEMES_EN.every(t => data.themes.includes(t.id))) setLoveReport(true);
   }
 
   // After paying on Groble, the buyer enters their order number or email here;
@@ -144,6 +158,7 @@ export default function EnKundaliPage() {
   }
 
   const premiumAllUnlocked = PREMIUM_THEMES_EN.every(t => unlockedThemes.includes(t.id));
+  const loveAllUnlocked = LOVE_THEMES_EN.every(t => unlockedThemes.includes(t.id));
 
   const moonPlanet = chart?.planets.find(p => p.id === 'moon');
   const sunPlanet = chart?.planets.find(p => p.id === 'sun');
@@ -290,13 +305,66 @@ export default function EnKundaliPage() {
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-5"><span className="ornament">AI Vedic Reading</span></h3>
                         <LiveCounter lang="en" />
 
+                        {/* Love-focused PDF report */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(190,24,93,0.08)', border: '1px solid rgba(244,114,182,0.3)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#f9a8d4' }}>💘 Love Report</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>5-chapter PDF · ₩11,900</p>
+                          </div>
+                          {!fullReport && !loveReport && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {LOVE_THEMES_EN.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setActivePremium(active ? null : t);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(244,114,182,0.22)' : 'transparent',
+                                    border: active ? '1px solid rgba(244,114,182,0.55)' : '1px solid rgba(244,114,182,0.3)',
+                                    color: active || unlocked ? '#f9a8d4' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          )}
+                          {loveAllUnlocked ? (
+                            <button onClick={() => { setLoveReport(!loveReport); setFullReport(false); }}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: loveReport ? 'rgba(201,168,76,0.25)' : 'rgba(244,114,182,0.2)', border: '1px solid rgba(244,114,182,0.5)', color: '#fbcfe8' }}>
+                              {loveReport ? '↩ View single themes' : '💘 Love Report (one PDF)'}
+                            </button>
+                          ) : (
+                            <div className="mb-1">
+                              {GROBLE_URLS.love && (
+                                <div className="mb-2">
+                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
+                                    💘 Love Report PDF <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,900</s> ₩11,900 · 40% off
+                                  </a>
+                                </div>
+                              )}
+                              <p className="text-[10px] mb-1" style={{ color: 'rgba(249,168,212,0.75)' }}>
+                                A portrait of your future spouse, when love arrives, where and how you meet, your charm blueprint, and spotting bad bonds — one PDF with cover and contents
+                              </p>
+                              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                Tap a locked chapter for a free preview · after paying, enter your payment phone number below to unlock
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
                         {/* Premium themes */}
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                             <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 Premium Deep Readings</p>
                             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>₩3,900 each · all 5 for ₩14,900</p>
                           </div>
-                          {!fullReport && (
+                          {!fullReport && !loveReport && (
                           <div className="flex flex-wrap gap-1.5 mb-2">
                             {PREMIUM_THEMES_EN.map(t => {
                               const unlocked = unlockedThemes.includes(t.id);
@@ -318,14 +386,14 @@ export default function EnKundaliPage() {
                             })}
                           </div>
                           )}
-                          {activePremium && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
+                          {activePremium && PREMIUM_THEMES_EN.some(p => p.id === activePremium.id) && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
                             <button onClick={() => handleUseCredit(activePremium.id)} disabled={paymentLoading}
                               className="btn-buy mb-2" style={{ display: 'inline-flex' }}>
                               {paymentLoading ? 'Unlocking...' : `🎟 Unlock '${activePremium.name}' with a credit · ${credits.prem} left`}
                             </button>
                           )}
                           {premiumAllUnlocked && (
-                            <button onClick={() => setFullReport(!fullReport)}
+                            <button onClick={() => { setFullReport(!fullReport); setLoveReport(false); }}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
                               style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
                               {fullReport ? '↩ View single themes' : '📕 Full 5-Theme Report (one PDF)'}
@@ -387,7 +455,7 @@ export default function EnKundaliPage() {
                         </div>
 
                         {/* Custom question (free) */}
-                        {!fullReport && (
+                        {!fullReport && !loveReport && (
                         <div className="mb-4">
                           <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>Ask Nani Ma directly (optional)</p>
                           <textarea
@@ -402,7 +470,16 @@ export default function EnKundaliPage() {
                         </div>
                         )}
 
-                        {fullReport && premiumToken ? (
+                        {loveReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
+                            themes={LOVE_THEMES_EN}
+                            premiumToken={premiumToken}
+                            lang='en'
+                            title='AI Vedic Love Report'
+                          />
+                        ) : fullReport && premiumToken ? (
                           <PremiumFullReport
                             chart={chart}
                             birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}

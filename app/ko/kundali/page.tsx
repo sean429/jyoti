@@ -57,7 +57,18 @@ const PREMIUM_THEMES_KO = [
   { id: 'family', name: '자녀·가족운', icon: '🏠', d2: 7,  desc: '자녀운과 가족 관계를 D1+D7 차트 기반으로 집중 분석합니다. 자녀 인연, 부모·형제 관계 패턴, 가족의 영향을 알려주세요.' },
 ] as const;
 
-type PremiumTheme = typeof PREMIUM_THEMES_KO[number];
+// Chapters of the love-focused PDF report (ids love1..love5 gate server-side)
+const LOVE_THEMES_KO = [
+  { id: 'love1', name: '미래 배우자 몽타주', icon: '💘', d2: 9, desc: '미래 배우자의 첫인상, 분위기, 스타일과 기질을 스케치합니다. 어떤 사람인지 생생하게 그려주세요.' },
+  { id: 'love2', name: '인연의 타이밍',     icon: '⏳', d2: 9, desc: '인연이 켜지는 시기와 결혼의 창을 다샤 흐름으로 읽습니다. 지금이 어떤 계절인지 알려주세요.' },
+  { id: 'love3', name: '만남의 시나리오',   icon: '🗺️', d2: 9, desc: '어디서 어떻게 만나게 되는지, 첫 만남의 장면과 경로를 그려주세요.' },
+  { id: 'love4', name: '나의 매력 설계도',  icon: '🌹', d2: 9, desc: '이성에게 작동하는 나의 매력이 무엇인지, 언제 켜지고 꺼지는지 알려주세요.' },
+  { id: 'love5', name: '악연 감별법',       icon: '🕯️', d2: 9, desc: '반복되는 악연 패턴과 조기 신호, 그리고 오래가는 사랑의 조건을 알려주세요.' },
+] as const;
+
+// Both the 5 deep-dive themes and the love-report chapters flow through the
+// same selection state.
+type PremiumTheme = { id: string; name: string; icon: string; d2: number; desc: string };
 
 // Groble product page links (set in Vercel env, inlined at build time)
 const GROBLE_URLS = {
@@ -67,6 +78,7 @@ const GROBLE_URLS = {
   stdSingle: process.env.NEXT_PUBLIC_GROBLE_STD_SINGLE_URL ?? '',
   stdFive: process.env.NEXT_PUBLIC_GROBLE_STD_FIVE_URL ?? '',
   stdAll: process.env.NEXT_PUBLIC_GROBLE_STD_ALL_URL ?? '',
+  love: process.env.NEXT_PUBLIC_GROBLE_LOVE_URL ?? '',
 };
 
 export default function KoKundaliPage() {
@@ -86,6 +98,7 @@ export default function KoKundaliPage() {
   const [customQuestion, setCustomQuestion] = useState('');
   const [justUnlocked, setJustUnlocked] = useState(false);
   const [fullReport, setFullReport] = useState(false);
+  const [loveReport, setLoveReport] = useState(false);
 
   // Restore premium token from localStorage
   useEffect(() => {
@@ -116,6 +129,7 @@ export default function KoKundaliPage() {
     setCredits(c);
     setJustUnlocked(true);
     if (PREMIUM_THEMES_KO.every(t => data.themes.includes(t.id))) setFullReport(true);
+    else if (LOVE_THEMES_KO.every(t => data.themes.includes(t.id))) setLoveReport(true);
   }
 
   // After paying on Groble, the buyer enters their order number or email here;
@@ -192,6 +206,7 @@ export default function KoKundaliPage() {
 
   const premiumAllUnlocked = PREMIUM_THEMES_KO.every(t => unlockedThemes.includes(t.id));
   const stdAllUnlocked = THEMES.every(t => unlockedThemes.includes('std' + t.id));
+  const loveAllUnlocked = LOVE_THEMES_KO.every(t => unlockedThemes.includes(t.id));
 
   const COLORS: Record<string,string> = {
     sun:'#f59e0b', moon:'#c0c0c0', mars:'#ef4444', mercury:'#10b981',
@@ -494,7 +509,7 @@ export default function KoKundaliPage() {
                         </h3>
                         <LiveCounter lang="ko" />
                         {/* Theme picker for AI */}
-                        {!fullReport && (
+                        {!fullReport && !loveReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                             <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>해석 주제 선택 — 종합 운세는 무료</p>
@@ -561,13 +576,67 @@ export default function KoKundaliPage() {
                         </div>
                         )}
 
+                        {/* Love-focused PDF report */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(190,24,93,0.08)', border: '1px solid rgba(244,114,182,0.3)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#f9a8d4' }}>💘 연애 집중 리포트</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>5챕터 PDF 한 권 · ₩11,900</p>
+                          </div>
+                          {!fullReport && !loveReport && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {LOVE_THEMES_KO.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setActivePremium(active ? null : t);
+                                    setSelectedTheme(null);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(244,114,182,0.22)' : 'transparent',
+                                    border: active ? '1px solid rgba(244,114,182,0.55)' : '1px solid rgba(244,114,182,0.3)',
+                                    color: active || unlocked ? '#f9a8d4' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          )}
+                          {loveAllUnlocked ? (
+                            <button onClick={() => { setLoveReport(!loveReport); setFullReport(false); }}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: loveReport ? 'rgba(201,168,76,0.25)' : 'rgba(244,114,182,0.2)', border: '1px solid rgba(244,114,182,0.5)', color: '#fbcfe8' }}>
+                              {loveReport ? '↩ 개별 테마 보기' : '💘 연애 집중 리포트 (PDF 한 권)'}
+                            </button>
+                          ) : (
+                            <div className="mb-1">
+                              {GROBLE_URLS.love && (
+                                <div className="mb-2">
+                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
+                                    💘 연애 집중 리포트 PDF <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,900</s> ₩11,900 · 40%↓
+                                  </a>
+                                </div>
+                              )}
+                              <p className="text-[10px] mb-1" style={{ color: 'rgba(249,168,212,0.75)' }}>
+                                미래 배우자의 인상·분위기 몽타주, 인연이 오는 시기, 만나는 장소와 첫 만남 시나리오, 나의 매력 설계도, 악연 감별까지 — 표지와 차례를 갖춘 PDF 한 권으로 드려요
+                              </p>
+                              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                잠긴 챕터를 누르면 무료 미리보기를 볼 수 있어요 · 결제 후 아래 입력칸에 결제하신 전화번호를 넣으면 열립니다
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
                         {/* Premium themes */}
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                             <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 프리미엄 심층 해석</p>
                             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>단품 ₩3,900 · 전체 ₩14,900</p>
                           </div>
-                          {!fullReport && (
+                          {!fullReport && !loveReport && (
                           <div className="flex flex-wrap gap-1.5 mb-2">
                             {PREMIUM_THEMES_KO.map(t => {
                               const unlocked = unlockedThemes.includes(t.id);
@@ -590,14 +659,14 @@ export default function KoKundaliPage() {
                             })}
                           </div>
                           )}
-                          {activePremium && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
+                          {activePremium && PREMIUM_THEMES_KO.some(p => p.id === activePremium.id) && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
                             <button onClick={() => handleUseCredit(activePremium.id)} disabled={paymentLoading}
                               className="btn-buy mb-2" style={{ display: 'inline-flex' }}>
                               {paymentLoading ? '여는 중...' : `🎟 이용권으로 '${activePremium.name}' 열기 · 남은 프리미엄 이용권 ${credits.prem}장`}
                             </button>
                           )}
                           {premiumAllUnlocked && (
-                            <button onClick={() => setFullReport(!fullReport)}
+                            <button onClick={() => { setFullReport(!fullReport); setLoveReport(false); }}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
                               style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
                               {fullReport ? '↩ 개별 테마 보기' : '📕 5개 테마 통합 보고서 (PDF 한 권)'}
@@ -659,7 +728,7 @@ export default function KoKundaliPage() {
                         </div>
 
                         {/* Custom question (free) */}
-                        {!fullReport && (
+                        {!fullReport && !loveReport && (
                         <div className="mb-4">
                           <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>나니마에게 직접 묻고 싶은 것 (선택)</p>
                           <textarea
@@ -674,7 +743,21 @@ export default function KoKundaliPage() {
                         </div>
                         )}
 
-                        {fullReport && premiumToken ? (
+                        {loveReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{
+                              name: birthInfo.name,
+                              date: `${birthInfo.year}년 ${birthInfo.month}월 ${birthInfo.day}일`,
+                              time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
+                              place: birthInfo.place,
+                            }}
+                            themes={LOVE_THEMES_KO}
+                            premiumToken={premiumToken}
+                            lang='ko'
+                            title='AI 베딕 연애 집중 리포트'
+                          />
+                        ) : fullReport && premiumToken ? (
                           <PremiumFullReport
                             chart={chart}
                             birthInfo={{

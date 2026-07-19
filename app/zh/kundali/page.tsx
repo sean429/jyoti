@@ -56,7 +56,18 @@ const PREMIUM_THEMES_ZH = [
   { id: 'family', name: '子女家庭运', icon: '🏠', d2: 7,  desc: '集中分析子女运与家庭关系。请基于D1+D7星盘，告诉我子女缘分、与父母兄弟的关系模式以及家庭的影响。' },
 ] as const;
 
-type PremiumTheme = typeof PREMIUM_THEMES_ZH[number];
+// Chapters of the love-focused PDF report (ids love1..love5 gate server-side)
+const LOVE_THEMES_ZH = [
+  { id: 'love1', name: '未来伴侣画像', icon: '💘', d2: 9, desc: '描绘未来伴侣的第一印象、气质、风格与性情，请生动地描绘这个人。' },
+  { id: 'love2', name: '缘分的时机',   icon: '⏳', d2: 9, desc: '用大运流转解读缘分开启的时期与婚姻之窗，告诉我现在处于什么季节。' },
+  { id: 'love3', name: '相遇的场景',   icon: '🗺️', d2: 9, desc: '在哪里、如何相遇，请描绘初次见面的场景与路径。' },
+  { id: 'love4', name: '我的魅力蓝图', icon: '🌹', d2: 9, desc: '对异性起作用的我的魅力是什么，何时开启、何时熄灭。' },
+  { id: 'love5', name: '孽缘辨别法',   icon: '🕯️', d2: 9, desc: '反复出现的孽缘模式、早期信号，以及爱情长久的条件。' },
+] as const;
+
+// Both the 5 deep-dive themes and the love-report chapters flow through the
+// same selection state.
+type PremiumTheme = { id: string; name: string; icon: string; d2: number; desc: string };
 
 // Groble product page links (set in Vercel env, inlined at build time)
 const GROBLE_URLS = {
@@ -66,6 +77,7 @@ const GROBLE_URLS = {
   stdSingle: process.env.NEXT_PUBLIC_GROBLE_STD_SINGLE_URL ?? '',
   stdFive: process.env.NEXT_PUBLIC_GROBLE_STD_FIVE_URL ?? '',
   stdAll: process.env.NEXT_PUBLIC_GROBLE_STD_ALL_URL ?? '',
+  love: process.env.NEXT_PUBLIC_GROBLE_LOVE_URL ?? '',
 };
 
 export default function ZhKundaliPage() {
@@ -85,6 +97,7 @@ export default function ZhKundaliPage() {
   const [customQuestion, setCustomQuestion] = useState('');
   const [justUnlocked, setJustUnlocked] = useState(false);
   const [fullReport, setFullReport] = useState(false);
+  const [loveReport, setLoveReport] = useState(false);
 
   // Restore premium token from localStorage
   useEffect(() => {
@@ -115,6 +128,7 @@ export default function ZhKundaliPage() {
     setCredits(c);
     setJustUnlocked(true);
     if (PREMIUM_THEMES_ZH.every(t => data.themes.includes(t.id))) setFullReport(true);
+    else if (LOVE_THEMES_ZH.every(t => data.themes.includes(t.id))) setLoveReport(true);
   }
 
   // After paying on Groble, the buyer enters their order number or email here;
@@ -188,6 +202,7 @@ export default function ZhKundaliPage() {
 
   const premiumAllUnlocked = PREMIUM_THEMES_ZH.every(t => unlockedThemes.includes(t.id));
   const stdAllUnlocked = THEMES.every(t => unlockedThemes.includes('std' + t.id));
+  const loveAllUnlocked = LOVE_THEMES_ZH.every(t => unlockedThemes.includes(t.id));
 
   const moonPlanet = chart?.planets.find(p => p.id === 'moon');
   const sunPlanet  = chart?.planets.find(p => p.id === 'sun');
@@ -489,7 +504,7 @@ export default function ZhKundaliPage() {
                           <span className="ornament">AI命盘解读</span>
                         </h3>
                         <LiveCounter lang="zh" />
-                        {!fullReport && (
+                        {!fullReport && !loveReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                             <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>选择解读主题 — 综合解读免费</p>
@@ -556,13 +571,67 @@ export default function ZhKundaliPage() {
                         </div>
                         )}
 
+                        {/* Love-focused PDF report */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(190,24,93,0.08)', border: '1px solid rgba(244,114,182,0.3)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#f9a8d4' }}>💘 恋爱专项报告</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>5章PDF一册 · ₩11,900</p>
+                          </div>
+                          {!fullReport && !loveReport && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {LOVE_THEMES_ZH.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setActivePremium(active ? null : t);
+                                    setSelectedTheme(null);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(244,114,182,0.22)' : 'transparent',
+                                    border: active ? '1px solid rgba(244,114,182,0.55)' : '1px solid rgba(244,114,182,0.3)',
+                                    color: active || unlocked ? '#f9a8d4' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          )}
+                          {loveAllUnlocked ? (
+                            <button onClick={() => { setLoveReport(!loveReport); setFullReport(false); }}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: loveReport ? 'rgba(201,168,76,0.25)' : 'rgba(244,114,182,0.2)', border: '1px solid rgba(244,114,182,0.5)', color: '#fbcfe8' }}>
+                              {loveReport ? '↩ 查看单项主题' : '💘 恋爱专项报告（一份PDF）'}
+                            </button>
+                          ) : (
+                            <div className="mb-1">
+                              {GROBLE_URLS.love && (
+                                <div className="mb-2">
+                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
+                                    💘 恋爱专项报告PDF <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,900</s> ₩11,900 · 省40%
+                                  </a>
+                                </div>
+                              )}
+                              <p className="text-[10px] mb-1" style={{ color: 'rgba(249,168,212,0.75)' }}>
+                                未来伴侣的印象与气质画像、缘分到来的时机、相遇的地点与初见场景、我的魅力蓝图、孽缘辨别 — 一份带封面与目录的完整PDF
+                              </p>
+                              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                点击锁定的章节可免费预览 · 支付后在下方输入付款手机号即可解锁
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
                         {/* Premium themes */}
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                             <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 高级深度解读</p>
                             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>单项 ₩3,900 · 全部 ₩14,900</p>
                           </div>
-                          {!fullReport && (
+                          {!fullReport && !loveReport && (
                           <div className="flex flex-wrap gap-1.5 mb-2">
                             {PREMIUM_THEMES_ZH.map(t => {
                               const unlocked = unlockedThemes.includes(t.id);
@@ -585,14 +654,14 @@ export default function ZhKundaliPage() {
                             })}
                           </div>
                           )}
-                          {activePremium && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
+                          {activePremium && PREMIUM_THEMES_ZH.some(p => p.id === activePremium.id) && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
                             <button onClick={() => handleUseCredit(activePremium.id)} disabled={paymentLoading}
                               className="btn-buy mb-2" style={{ display: 'inline-flex' }}>
                               {paymentLoading ? '解锁中...' : `🎟 用使用券解锁「${activePremium.name}」· 剩余高级使用券 ${credits.prem} 张`}
                             </button>
                           )}
                           {premiumAllUnlocked && (
-                            <button onClick={() => setFullReport(!fullReport)}
+                            <button onClick={() => { setFullReport(!fullReport); setLoveReport(false); }}
                               className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
                               style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
                               {fullReport ? '↩ 查看单项主题' : '📕 5项主题完整报告（一份PDF）'}
@@ -654,7 +723,7 @@ export default function ZhKundaliPage() {
                         </div>
 
                         {/* Custom question (free) */}
-                        {!fullReport && (
+                        {!fullReport && !loveReport && (
                         <div className="mb-4">
                           <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>想直接问Nani Ma的问题（可选）</p>
                           <textarea
@@ -669,7 +738,21 @@ export default function ZhKundaliPage() {
                         </div>
                         )}
 
-                        {fullReport && premiumToken ? (
+                        {loveReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{
+                              name: birthInfo.name,
+                              date: `${birthInfo.year}年${birthInfo.month}月${birthInfo.day}日`,
+                              time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
+                              place: birthInfo.place,
+                            }}
+                            themes={LOVE_THEMES_ZH}
+                            premiumToken={premiumToken}
+                            lang='zh'
+                            title='AI吠陀恋爱专项报告'
+                          />
+                        ) : fullReport && premiumToken ? (
                           <PremiumFullReport
                             chart={chart}
                             birthInfo={{

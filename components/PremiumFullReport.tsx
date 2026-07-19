@@ -11,45 +11,50 @@ interface Props {
   themes: ReadonlyArray<FTheme>;
   premiumToken: string;
   lang: 'ko' | 'zh' | 'en';
+  title?: string; // cover title override, e.g. the love report's own name
 }
 
 const STRINGS = {
   ko: {
     title: 'AI 베딕 프리미엄 통합 보고서',
-    start: '📕 5개 테마 통합 보고서 생성',
-    note: '5개 테마를 이어서 해석합니다 — 약 3~5분 걸리니 페이지를 닫지 마세요',
+    start: (n: number) => `📕 ${n}개 챕터 통합 보고서 생성`,
+    note: (n: number) => `${n}개 챕터를 이어서 해석합니다 — 약 3~5분 걸리니 페이지를 닫지 마세요`,
     generating: (name: string, i: number, n: number) => `${i}/${n} · ${name} 해석 중...`,
     resume: '▶ 이어서 생성',
     failed: '생성이 중단되었습니다. 이어서 다시 시도할 수 있어요.',
     pdf: '📄 PDF로 저장',
-    done: '5개 테마 해석이 모두 완성되었습니다',
+    done: (n: number) => `${n}개 챕터 해석이 모두 완성되었습니다`,
+    toc: '차례',
   },
   zh: {
     title: 'AI吠陀高级完整报告',
-    start: '📕 生成5项主题完整报告',
-    note: '将连续解读5个主题 — 大约需要3~5分钟，请勿关闭页面',
+    start: (n: number) => `📕 生成${n}章完整报告`,
+    note: (n: number) => `将连续解读${n}个章节 — 大约需要3~5分钟，请勿关闭页面`,
     generating: (name: string, i: number, n: number) => `${i}/${n} · 正在解读 ${name}...`,
     resume: '▶ 继续生成',
     failed: '生成中断，可以继续重试。',
     pdf: '📄 保存为PDF',
-    done: '5个主题的解读已全部完成',
+    done: (n: number) => `${n}个章节的解读已全部完成`,
+    toc: '目录',
   },
   en: {
     title: 'AI Vedic Premium Full Report',
-    start: '📕 Generate Full 5-Theme Report',
-    note: 'Reads all 5 themes in sequence — takes about 3–5 minutes, keep this page open',
+    start: (n: number) => `📕 Generate the Full ${n}-Chapter Report`,
+    note: (n: number) => `Reads all ${n} chapters in sequence — takes about 3–5 minutes, keep this page open`,
     generating: (name: string, i: number, n: number) => `${i}/${n} · Reading ${name}...`,
     resume: '▶ Resume',
     failed: 'Generation was interrupted. You can resume where it stopped.',
     pdf: '📄 Save as PDF',
-    done: 'All 5 theme readings are complete',
+    done: (n: number) => `All ${n} chapter readings are complete`,
+    toc: 'Contents',
   },
 } as const;
 
-export default function PremiumFullReport({ chart, birthInfo, themes, premiumToken, lang }: Props) {
+export default function PremiumFullReport({ chart, birthInfo, themes, premiumToken, lang, title }: Props) {
   // Session cache: finished sections survive tab switches and page reloads for
   // the same chart, so buyers never pay the 3-5 minute generation twice.
-  const cacheKey = `jyoti_fullreport_${lang}|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}`;
+  // The theme-id list keeps different reports (premium vs love) apart.
+  const cacheKey = `jyoti_fullreport_${lang}|${themes.map(t => t.id).join('.')}|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}`;
   const [sections, setSections] = useState<{ theme: FTheme; text: string }[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -151,18 +156,26 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
       {sections.length === 0 && current < 0 && (
         <div className='text-center py-6'>
           <div className='text-4xl mb-3'>📕</div>
-          <p className='text-xs mb-4' style={{ color: 'var(--text-muted)' }}>{S.note}</p>
-          <button className='btn-gold' onClick={generate}>{S.start}</button>
+          <p className='text-xs mb-4' style={{ color: 'var(--text-muted)' }}>{S.note(themes.length)}</p>
+          <button className='btn-gold' onClick={generate}>{S.start(themes.length)}</button>
           {error && <p className='text-xs mt-3' style={{ color: '#fca5a5' }}>{error}</p>}
         </div>
       )}
 
       {(sections.length > 0 || current >= 0) && (
         <div className='print-report'>
-          <div className='mb-6 pb-3 text-center' style={{ borderBottom: '2px solid rgba(201,168,76,0.35)' }}>
-            <p className='text-xs font-cinzel tracking-widest' style={{ color: 'var(--gold-dim)' }}>{S.title}</p>
+          <div className='mb-6 pb-4 text-center' style={{ borderBottom: '2px solid rgba(201,168,76,0.35)' }}>
+            <p className='text-xs font-cinzel tracking-widest' style={{ color: 'var(--gold-dim)' }}>{title ?? S.title}</p>
             <p className='font-cinzel font-bold text-xl mt-1' style={{ color: 'var(--gold-light)' }}>{birthInfo.name}</p>
-            <p className='text-xs mt-0.5' style={{ color: 'var(--text-muted)' }}>{birthInfo.date} · {birthInfo.time} · {birthInfo.place}</p>
+            <p className='text-xs mt-0.5 mb-4' style={{ color: 'var(--text-muted)' }}>{birthInfo.date} · {birthInfo.time} · {birthInfo.place}</p>
+            <div className='inline-block text-left px-6 py-3 rounded-lg' style={{ border: '1px solid rgba(201,168,76,0.25)' }}>
+              <p className='text-[10px] font-cinzel tracking-widest mb-1.5 text-center' style={{ color: 'var(--gold-dim)' }}>✦ {S.toc} ✦</p>
+              {themes.map((t, i) => (
+                <p key={t.id} className='text-xs mb-0.5' style={{ color: 'var(--text-muted)' }}>
+                  <span style={{ color: 'var(--gold-dim)' }}>{i + 1}.</span> {t.icon} {t.name}
+                </p>
+              ))}
+            </div>
           </div>
 
           {sections.map(({ theme, text }, idx) => (
@@ -198,7 +211,7 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
 
           {doneAll && (
             <div className='mt-4 pt-4 text-center no-print' style={{ borderTop: '1px solid rgba(201,168,76,0.2)' }}>
-              <p className='text-xs mb-3' style={{ color: 'var(--gold-dim)' }}>✨ {S.done}</p>
+              <p className='text-xs mb-3' style={{ color: 'var(--gold-dim)' }}>✨ {S.done(themes.length)}</p>
               <button className='btn-gold' onClick={() => window.print()}>{S.pdf}</button>
             </div>
           )}

@@ -6,6 +6,9 @@ import crypto from 'crypto';
 
 export const PREMIUM_THEME_IDS = ['career', 'love', 'health', 'yearly', 'family'] as const;
 
+// Chapters of the love-focused PDF report, sold as one product.
+export const LOVE_THEME_IDS = ['love1', 'love2', 'love3', 'love4', 'love5'] as const;
+
 // Purchases can grant themes directly (named options, amount tiers) or
 // credits the buyer spends on themes of their choice via /api/payment/use-credit.
 // std credits open the 15 divisional themes, prem credits the 5 deep-dive ones.

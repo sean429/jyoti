@@ -15,6 +15,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const PREMIUM_THEME_IDS = new Set([
   'career', 'love', 'health', 'yearly', 'family',
   ...Array.from({ length: 15 }, (_, i) => `std${i + 1}`),
+  ...Array.from({ length: 5 }, (_, i) => `love${i + 1}`),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -125,6 +126,104 @@ Response structure (use INSTEAD of the default structure):
 4. The dynamic that repeats in family relationships — the role this person ends up holding, and where friction starts
 5. The family current of this period — from the present dasha
 6. How to soften these relationships — concrete behavioral guidance
+7. Nanima's practical advice, 2–3 items
+8. A final word`,
+
+  love1: `[Love Report chapter 1 — Portrait of the Future Spouse]
+This is a chapter of the paid love-focused report. Go deep and concrete, while obeying the Voice rules above. This chapter answers the question readers crave most: "what will my future spouse be like — their impression, vibe, look?"
+Honesty guard: never claim to predict a literal face. Paint a vivid impression-portrait — atmosphere, style, physical bearing as archetypes — always as strong tendencies.
+
+Analyze internally (never lecture techniques):
+* Build the portrait from the 7th house sign and its lord's sign/nakshatra (bearing, build archetype, first impression), planets sitting in the 7th (the flavor they add), and Venus (the taste in partners).
+* If D9 is present, refine the portrait with the D9 7th house and D9 Venus — the person as they reveal themselves after commitment.
+* Age-difference and maturity tendencies: Saturn's influence on the 7th suggests older/mature bearing; Mercury youthful; Jupiter generous/established.
+* Where the spouse's strengths lie (their career flavor, their social air) from the 7th lord's house position.
+
+Response structure (use INSTEAD of the default structure):
+1. The first glimpse — the overall impression this person will give at first meeting, one vivid paragraph
+2. Bearing and style — build, presence, the way they dress and carry themselves, as archetypes
+3. Their temperament at home vs outside — the two faces
+4. Their capability — what they are good at, their working and social flavor
+5. Age and maturity — older, younger, or same-age energy, said as tendency
+6. What they will love about you — the fit between your charts
+7. Nanima's word on recognizing them when they appear
+8. A final word`,
+
+  love2: `[Love Report chapter 2 — The Timing of Love]
+This is a chapter of the paid love-focused report. Go deep and concrete, while obeying the Voice rules above. This chapter answers: "WHEN does my person arrive — and when does marriage become real?"
+Speak in periods and windows drawn from the dasha data, never exact dates or ages, never guarantees. The payload has NO transit data — never mention transits or sade-sati.
+
+Analyze internally (never lecture techniques):
+* Windows open when dasha periods involve the 7th lord, Venus, Jupiter, or planets in the 7th — in the mahadasha/antardasha data provided.
+* Judge whether the current period is a meeting season, a deepening season, or a preparing season from the running dasha lords' relation to the 7th, 5th and 2nd.
+* If the current dasha does not touch the relationship houses, say honestly that this is a quieter season and name what it is FOR (self-building), and point to the next window visible in the data.
+* Distinguish dating energy (5th) from marriage energy (7th, 2nd) — some periods bring romance, others bring commitment.
+
+Response structure (use INSTEAD of the default structure):
+1. The season you are in now — meeting, deepening, or preparing, declared warmly in one paragraph
+2. What this season is doing for your love life — even a quiet season has a job
+3. The window — when the current data shows relationship energy switching on, described as a period, not a date
+4. Dating vs marriage timing — whether the coming energy is romance-flavored or commitment-flavored
+5. How to use the time before the window — concrete preparation
+6. The signs the window has opened — what changes in daily life
+7. Nanima's practical advice, 2–3 items
+8. A final word`,
+
+  love3: `[Love Report chapter 3 — The Meeting Scenario]
+This is a chapter of the paid love-focused report. Go deep and concrete, while obeying the Voice rules above. This chapter answers: "WHERE and HOW do we meet?" — the scenario readers replay in their heads.
+
+Analyze internally (never lecture techniques):
+* The meeting route comes from the 7th lord's house position: 10th → through work and social standing; 3rd/11th → introductions, friends, communities; 9th → travel, study, faraway places; 12th → foreign lands, quiet unexpected corners; 4th → through home, neighborhood, family circles; 5th → hobbies, play, creative scenes; and so on.
+* Venus's house colors the atmosphere of the meeting; Rahu's involvement suggests unconventional or online routes.
+* If D9 is present, use it to distinguish how the meeting looks from how the relationship settles.
+* Paint one concrete, cinematic first-meeting scene consistent with these placements — clearly framed as the flavor of the meeting, not a fixed script.
+
+Response structure (use INSTEAD of the default structure):
+1. The route — where this chart says your person tends to enter from, one warm paragraph
+2. The scene — a short cinematic sketch of a first meeting that fits this chart's flavor
+3. Who moves first — whether you approach or are approached, and how it tends to start
+4. The unlikely routes — one or two secondary routes the chart also leaves open
+5. Places and habits that raise the odds — concrete, doable
+6. What NOT to do — the habit that closes your door
+7. Nanima's practical advice, 2–3 items
+8. A final word`,
+
+  love4: `[Love Report chapter 4 — Your Charm Blueprint]
+This is a chapter of the paid love-focused report. Go deep and concrete, while obeying the Voice rules above. This chapter answers: "what makes ME attractive — and what switches it off?" (The Vedic counterpart of what Korean readers call 도화살 — magnetic charm.)
+
+Analyze internally (never lecture techniques):
+* Draw the charm profile from Venus (sign, house, nakshatra), the Moon (emotional appeal), the Lagna and its lord (first-impression energy), and any Rahu involvement with these (magnetic, unconventional pull).
+* Name where the charm works best: the 1st (presence), 5th (playfulness), 7th (one-on-one), 10th (public standing) — wherever these planets actually sit.
+* Also name the switch-off: the habit or mood, visible in the chart's tensions, that dims this charm (e.g. Saturn pressure → over-guardedness).
+* Keep it flattering but honest — this is the chapter where the reader should feel truly seen.
+
+Response structure (use INSTEAD of the default structure):
+1. Your charm, named — the one sentence that captures what pulls people toward you, then a paragraph unpacking it
+2. How it works — the situations where your charm turns on by itself
+3. The kind of person who falls for it — who your charm lands on hardest
+4. The switch-off — the moment your charm dims, said kindly but honestly
+5. Styling the charm — concrete ways to dress, speak and show up that amplify what you already have
+6. Charm in a long relationship — how this magnetism matures after the beginning
+7. Nanima's practical advice, 2–3 items
+8. A final word`,
+
+  love5: `[Love Report chapter 5 — Bad Bonds and Keeping the Good One]
+This is a chapter of the paid love-focused report. Go deep and concrete, while obeying the Voice rules above. This chapter answers: "which kind of person keeps hurting me — and how do I keep the right one?"
+Never frighten. The point is recognition and protection, not doom. Never assert that a current or past partner is "bad".
+
+Analyze internally (never lecture techniques):
+* Repeating painful patterns come from the Rahu/Ketu axis (especially touching 1-7 or 5-11), afflictions to the 7th and its lord, and Mars pressure on relationship houses (mention only as strong-energy tendency, gently).
+* Describe the TYPE that repeatedly hooks this person for the wrong reasons — the bait they fall for — and the early signals, visible in behavior, that this type shows.
+* Contrast with the nourishing type: the placements that show what actually steadies this person (Jupiter/Venus/Moon supports).
+* End on keeping love alive: what this chart needs to give and receive for a bond to last.
+
+Response structure (use INSTEAD of the default structure):
+1. The pattern that repeats — the painful loop in this person's love history, named gently
+2. The bait — why exactly that type keeps working on you
+3. Early warning signs — 3–4 concrete behaviors to notice in the first weeks
+4. The nourishing type — who actually steadies you, and why it may feel unfamiliar at first
+5. How to leave the loop — the specific habit change that breaks the cycle
+6. Keeping the good one — what your chart needs to give and to receive for love to last
 7. Nanima's practical advice, 2–3 items
 8. A final word`,
 };
