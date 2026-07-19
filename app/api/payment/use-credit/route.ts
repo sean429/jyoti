@@ -33,7 +33,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     lk = pickLang(body.lang);
     const theme = String(body.theme ?? '');
-    const isPrem = (PREMIUM_THEME_IDS as readonly string[]).includes(theme);
+    // 'question' opens the paid custom-question feature — priced like a
+    // premium single, so it spends a prem credit.
+    const isPrem = (PREMIUM_THEME_IDS as readonly string[]).includes(theme) || theme === 'question';
     const isStd = /^std([1-9]|1[0-5])$/.test(theme);
     if (!isPrem && !isStd) {
       return NextResponse.json({ error: MESSAGES.serverErr[lk] }, { status: 400 });

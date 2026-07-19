@@ -496,8 +496,9 @@ export default function ZhKundaliPage() {
                         : selectedTheme
                           ? { name: selectedTheme.name, desc: selectedTheme.desc + (question ? ' 补充问题: ' + question : ''), d2: selectedTheme.d2, premiumId: 'std' + selectedTheme.id }
                           : question
-                            ? { name: '我的问题', desc: question, d2: 0 }
+                            ? { name: '我的问题', desc: question, d2: 0, premiumId: 'question' }
                             : undefined;
+                      const questionUnlocked = unlockedThemes.includes('question');
                       return (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-4">
@@ -722,19 +723,47 @@ export default function ZhKundaliPage() {
                           )}
                         </div>
 
-                        {/* Custom question (free) */}
+                        {/* Custom question — paid feature, opened with one prem credit */}
                         {!fullReport && !loveReport && (
                         <div className="mb-4">
-                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>想直接问Nani Ma的问题（可选）</p>
-                          <textarea
-                            value={customQuestion}
-                            onChange={e => setCustomQuestion(e.target.value)}
-                            maxLength={500}
-                            rows={2}
-                            placeholder="例如：明年换工作合适吗？现在学的东西值得坚持吗？"
-                            className="w-full p-3 rounded-lg text-sm resize-none"
-                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
-                          />
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>直接向Nani Ma提问 {questionUnlocked ? '🔓' : '🔒'}</p>
+                            {!questionUnlocked && <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>1张高级使用券即可永久解锁</p>}
+                          </div>
+                          {questionUnlocked ? (
+                            <>
+                              <textarea
+                                value={customQuestion}
+                                onChange={e => setCustomQuestion(e.target.value)}
+                                maxLength={500}
+                                rows={3}
+                                placeholder={'问题越具体，回答越准确。多个问题请编号 — 例如：\n1. 明年换工作合适吗？\n2. 现在学的东西值得坚持吗？'}
+                                className="w-full p-3 rounded-lg text-sm resize-none"
+                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
+                              />
+                              <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                                💡 尽量具体，多个问题请编号，Nani Ma会逐一作答
+                              </p>
+                            </>
+                          ) : (
+                            <div className="p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px dashed rgba(201,168,76,0.3)' }}>
+                              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                                把想问的问题编号写清楚，Nani Ma会依据星盘逐一回答。1张高级使用券（₩3,900）即可永久解锁提问功能。
+                              </p>
+                              <div className="flex flex-wrap gap-2 items-center">
+                                {credits.prem > 0 && (
+                                  <button onClick={() => handleUseCredit('question')} disabled={paymentLoading} className="btn-buy">
+                                    {paymentLoading ? '解锁中...' : `🎟 用使用券解锁提问 · 剩余 ${credits.prem} 张`}
+                                  </button>
+                                )}
+                                {GROBLE_URLS.single && (
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
+                                    💳 高级使用券 ₩3,900
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         )}
 

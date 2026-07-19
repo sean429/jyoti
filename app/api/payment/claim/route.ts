@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     // demos, never runs dry, rotatable by changing the env var.
     if (process.env.MASTER_CODE && code === process.env.MASTER_CODE.trim().toLowerCase()) {
       await redis(['SET', recordKey(code), JSON.stringify({
-        themes: [...PREMIUM_THEME_IDS, ...LOVE_THEME_IDS, ...Array.from({ length: 15 }, (_, i) => 'std' + (i + 1))],
+        themes: [...PREMIUM_THEME_IDS, ...LOVE_THEME_IDS, 'question', ...Array.from({ length: 15 }, (_, i) => 'std' + (i + 1))],
         credits: { std: 999, prem: 999 },
         at: new Date().toISOString(),
       }), 'EX', 31_536_000]);

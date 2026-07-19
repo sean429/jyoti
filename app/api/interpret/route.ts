@@ -16,6 +16,7 @@ const PREMIUM_THEME_IDS = new Set([
   'career', 'love', 'health', 'yearly', 'family',
   ...Array.from({ length: 15 }, (_, i) => `std${i + 1}`),
   ...Array.from({ length: 5 }, (_, i) => `love${i + 1}`),
+  'question', // paid custom questions to Nanima
 ]);
 
 // ---------------------------------------------------------------------------
@@ -226,7 +227,27 @@ Response structure (use INSTEAD of the default structure):
 6. Keeping the good one — what your chart needs to give and to receive for love to last
 7. Nanima's practical advice, 2–3 items
 8. A final word`,
+
+  question: `[Premium custom questions]
+The reader paid to ask Nanima direct questions. The question text is in the Question field above — it may contain several questions, often numbered.
+* Ignore the default response structure (items 1–9) above. Answer each question in order, one section per question, numbered to match the reader's numbering.
+* Lead every answer with the direct conclusion in the first sentence — a clear leaning, a named tendency, a concrete direction — then give it texture from the chart. Never open with background or hedge with "it depends".
+* Where timing is asked, answer in dasha-based windows from the provided data, never exact dates. Where yes/no is asked, give a clear leaning plus the condition it hinges on.
+* If a question cannot be answered from the chart data, say so honestly in one sentence rather than inventing.
+* The Voice rules above still apply: plain words, sparse chart anchors, no jargon chains.
+* Close with one short warm line from Nanima.`,
 };
+
+// Paid single-topic themes (the 15 divisional combinations) get this block —
+// they have no bespoke deep-dive prompt, but a buyer of one topic expects that
+// topic's core questions actually answered, not a general life reading.
+const STD_TOPIC_BLOCK = `[Paid single-topic reading — be concrete]
+This is a PAID reading of one specific topic the buyer chose (see the theme name and description above). They are not paying for a general life reading — they want this topic's core questions answered with real conclusions.
+* Ignore the default response structure (items 1–9) above. Build 5–6 sections around THIS topic: the things a buyer of exactly this topic most wants to know. (A spouse-bond topic must actually describe what kind of partner suits and awaits them, how the bond tends to form, and in which periods it strengthens; a wealth topic must say how money actually comes in and leaks; a karmic-pattern topic must name the pattern — and so on for whichever topic was chosen.)
+* Lead every section with its conclusion in the first sentence — a definite tendency, a named type, a concrete direction — then color it in. Never hide behind vagueness; the reader should finish each section knowing what the answer was.
+* Where timing matters, give windows from the provided dasha data (periods, not dates).
+* Go as deep as a premium reading. The Voice rules above still apply: plain words, sparse chart anchors, no jargon chains.
+* End with Nanima's 2–3 practical suggestions for this topic and one warm closing line.`;
 
 function verifyPremiumToken(token: string): { themes: string[]; exp: number } {
   const dotIdx = token.lastIndexOf('.');
@@ -431,11 +452,11 @@ This is the free summary reading. Completely ignore the default response structu
 * No section headings — exactly 4 paragraphs: (1) first impression — the single strongest recurring theme of this chart; (2) core disposition — 2–3 sentences, anchored once in the chart in plain words; (3) the current dasha weather — 2–3 sentences; (4) one small practical tip and a warm closing word from Nanima.
 * Each paragraph 2–4 sentences; use the full budget — aim for 900–1,200 characters including spaces (Korean-character count; other output languages equivalent), and never exceed 1,200. Drop enumerations, keep only the most important insights, and always end on a complete sentence.
 * You may include exactly one natural sentence noting that deep analysis of specific areas (career, love, health, this year, family) lives in the premium reports.`;
-    // Paid std themes without a bespoke deep-dive block get the full default
-    // 9-section structure (empty block); free requests get the summary block.
+    // Deep-dive themes get their bespoke block, the 15 std topics get the
+    // generic single-topic block, and free requests get the summary block.
     const isGatedTheme = !!theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId);
     const premiumBlock = isGatedTheme
-      ? (previewMode ? `\n${PREVIEW_BLOCK}\n` : (PREMIUM_PROMPTS[theme.premiumId] ? `\n${PREMIUM_PROMPTS[theme.premiumId]}\n` : ''))
+      ? (previewMode ? `\n${PREVIEW_BLOCK}\n` : `\n${PREMIUM_PROMPTS[theme.premiumId] ?? STD_TOPIC_BLOCK}\n`)
       : `\n${FREE_BLOCK}\n`;
 
     const prompt = `This is a custom Vedic astrology reading prompt.

@@ -298,8 +298,9 @@ export default function EnKundaliPage() {
                       const aiTheme = activePremium
                         ? { name: activePremium.name, desc: activePremium.desc + (question ? ' Additional question: ' + question : ''), d2: activePremium.d2, premiumId: activePremium.id }
                         : question
-                          ? { name: 'My Question', desc: question, d2: 0 }
+                          ? { name: 'My Question', desc: question, d2: 0, premiumId: 'question' }
                           : undefined;
+                      const questionUnlocked = unlockedThemes.includes('question');
                       return (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-5"><span className="ornament">AI Vedic Reading</span></h3>
@@ -454,19 +455,47 @@ export default function EnKundaliPage() {
                           )}
                         </div>
 
-                        {/* Custom question (free) */}
+                        {/* Custom question — paid feature, opened with one prem credit */}
                         {!fullReport && !loveReport && (
                         <div className="mb-4">
-                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>Ask Nani Ma directly (optional)</p>
-                          <textarea
-                            value={customQuestion}
-                            onChange={e => setCustomQuestion(e.target.value)}
-                            maxLength={500}
-                            rows={2}
-                            placeholder="e.g. Is next year a good time to change jobs? Should I keep pursuing my current studies?"
-                            className="w-full p-3 rounded-lg text-sm resize-none"
-                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
-                          />
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>Ask Nani Ma directly {questionUnlocked ? '🔓' : '🔒'}</p>
+                            {!questionUnlocked && <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Unlocks forever with 1 premium credit</p>}
+                          </div>
+                          {questionUnlocked ? (
+                            <>
+                              <textarea
+                                value={customQuestion}
+                                onChange={e => setCustomQuestion(e.target.value)}
+                                maxLength={500}
+                                rows={3}
+                                placeholder={'The more specific, the better the answer. Number multiple questions — e.g.:\n1. Is next year a good time to change jobs?\n2. Should I keep pursuing my current studies?'}
+                                className="w-full p-3 rounded-lg text-sm resize-none"
+                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
+                              />
+                              <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                                💡 Be specific, and number multiple questions — Nani Ma answers them one by one
+                              </p>
+                            </>
+                          ) : (
+                            <div className="p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px dashed rgba(201,168,76,0.3)' }}>
+                              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                                Write your questions specifically and numbered, and Nani Ma answers each from your chart. One premium credit (₩3,900) unlocks the question feature forever.
+                              </p>
+                              <div className="flex flex-wrap gap-2 items-center">
+                                {credits.prem > 0 && (
+                                  <button onClick={() => handleUseCredit('question')} disabled={paymentLoading} className="btn-buy">
+                                    {paymentLoading ? 'Unlocking...' : `🎟 Unlock with a credit · ${credits.prem} left`}
+                                  </button>
+                                )}
+                                {GROBLE_URLS.single && (
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
+                                    💳 Premium credit ₩3,900
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         )}
 
