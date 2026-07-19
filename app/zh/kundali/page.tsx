@@ -11,6 +11,7 @@ import PremiumFullReport from '@/components/PremiumFullReport';
 import CreditWallet from '@/components/CreditWallet';
 import LiveCounter from '@/components/LiveCounter';
 import PaymentReturnPrompt from '@/components/PaymentReturnPrompt';
+import BrowserHint from '@/components/BrowserHint';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_ZH = [
@@ -201,6 +202,7 @@ export default function ZhKundaliPage() {
       <div className="stars-bg" />
       <CreditWallet lang="zh" credits={credits} unlockedCount={unlockedThemes.length} />
       <PaymentReturnPrompt lang="zh" onUnlocked={saveGrant} />
+      <BrowserHint lang="zh" />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }}
           className="sticky top-0 z-50">

@@ -11,6 +11,7 @@ import PremiumFullReport from '@/components/PremiumFullReport';
 import CreditWallet from '@/components/CreditWallet';
 import LiveCounter from '@/components/LiveCounter';
 import PaymentReturnPrompt from '@/components/PaymentReturnPrompt';
+import BrowserHint from '@/components/BrowserHint';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_KO = [
@@ -202,6 +203,7 @@ export default function KoKundaliPage() {
       <div className="stars-bg" />
       <CreditWallet lang="ko" credits={credits} unlockedCount={unlockedThemes.length} />
       <PaymentReturnPrompt lang="ko" onUnlocked={saveGrant} />
+      <BrowserHint lang="ko" />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }}
           className="sticky top-0 z-50">
