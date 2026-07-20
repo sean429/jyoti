@@ -139,6 +139,18 @@ export default function KoKundaliPage() {
     self: '본인 추천 코드는 사용할 수 없어요',
   };
 
+  // Shares the invite link, falling back to the clipboard where Web Share
+  // is unavailable. Used by both the wallet and the referral card.
+  function shareRef() {
+    const url = `${location.origin}${location.pathname}?ref=${myRef}`;
+    const text = `나니마의 베딕 점성술 — 추천 코드 ${myRef} 로 열면 이용권 1장을 받아요\n${url}`;
+    if (navigator.share) { void navigator.share({ text }).catch(() => {}); return; }
+    void navigator.clipboard.writeText(text).then(() => {
+      setRefCopied(true);
+      setTimeout(() => setRefCopied(false), 2500);
+    }).catch(() => {});
+  }
+
   // Persists a token grant (from claim or use-credit) to state + localStorage.
   function saveGrant(data: {
     token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number;
@@ -249,7 +261,8 @@ export default function KoKundaliPage() {
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="stars-bg" />
-      <CreditWallet lang="ko" credits={credits} unlockedCount={unlockedThemes.length} />
+      <CreditWallet lang="ko" credits={credits} unlockedCount={unlockedThemes.length}
+        refCode={myRef} onShare={myRef ? shareRef : undefined} />
       <PaymentReturnPrompt lang="ko" onUnlocked={saveGrant} />
       <BrowserHint lang="ko" />
       <div style={{ position: 'relative', zIndex: 1 }}>
@@ -791,15 +804,7 @@ export default function KoKundaliPage() {
                               {myRef}
                             </span>
                             <button
-                              onClick={() => {
-                                const url = `${location.origin}${location.pathname}?ref=${myRef}`;
-                                const text = `나니마의 베딕 점성술 — 추천 코드 ${myRef} 로 열면 이용권 1장을 받아요\n${url}`;
-                                if (navigator.share) { void navigator.share({ text }).catch(() => {}); return; }
-                                void navigator.clipboard.writeText(text).then(() => {
-                                  setRefCopied(true);
-                                  setTimeout(() => setRefCopied(false), 2500);
-                                }).catch(() => {});
-                              }}
+                              onClick={shareRef}
                               className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
                               style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.4)', color: 'var(--gold-light)' }}>
                               {refCopied ? '복사됐어요' : '📤 초대 링크 공유'}

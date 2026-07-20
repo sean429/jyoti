@@ -15,6 +15,8 @@ const STRINGS = {
     unlocked: '해금된 테마',
     unlockedCount: (n: number) => `${n}개`,
     hint: '잠긴 테마를 고르면 이용권으로 바로 열 수 있어요',
+    invite: '내 초대 코드 · 친구 결제 시 1장',
+    share: '공유',
   },
   zh: {
     title: '我的使用券',
@@ -24,6 +26,8 @@ const STRINGS = {
     unlocked: '已解锁主题',
     unlockedCount: (n: number) => `${n}个`,
     hint: '选择锁定的主题，即可用使用券立即解锁',
+    invite: '我的邀请码 · 好友付款得1张',
+    share: '分享',
   },
   en: {
     title: 'My Credits',
@@ -33,17 +37,21 @@ const STRINGS = {
     unlocked: 'Unlocked themes',
     unlockedCount: (n: number) => `${n}`,
     hint: 'Pick a locked theme to unlock it with a credit',
+    invite: 'My invite code · 1 credit per friend',
+    share: 'Share',
   },
 };
 
-export default function CreditWallet({ lang, credits, unlockedCount }: {
+export default function CreditWallet({ lang, credits, unlockedCount, refCode, onShare }: {
   lang: 'ko' | 'zh' | 'en';
   credits: Credits;
   unlockedCount: number;
+  refCode?: string;
+  onShare?: () => void;
 }) {
   const s = STRINGS[lang];
   const hasCredits = credits.std > 0 || credits.prem > 0;
-  if (!hasCredits && unlockedCount === 0) return null;
+  if (!hasCredits && unlockedCount === 0 && !refCode) return null;
 
   return (
     <div className="no-print" style={{
@@ -56,6 +64,20 @@ export default function CreditWallet({ lang, credits, unlockedCount }: {
       <p className="font-cinzel text-xs font-bold mb-1.5" style={{ color: 'var(--gold-light)' }}>
         🎟 {s.title}
       </p>
+      {refCode && (
+        <div className="mb-2 pb-2" style={{ borderBottom: '1px solid rgba(201,168,76,0.2)' }}>
+          <p className="text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>{s.invite}</p>
+          <div className="flex items-center gap-1.5">
+            <span className="font-cinzel text-xs font-bold tracking-widest" style={{ color: 'var(--gold-light)' }}>{refCode}</span>
+            {onShare && (
+              <button onClick={onShare} className="text-[10px] font-cinzel px-1.5 py-0.5 rounded"
+                style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.35)', color: 'var(--gold-light)' }}>
+                📤 {s.share}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {credits.std > 0 && (
         <div className="flex items-center justify-between text-xs mb-1">
           <span style={{ color: 'var(--text-muted)' }}>{s.std}</span>
