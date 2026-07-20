@@ -43,9 +43,22 @@ const STRINGS = {
 const PENDING_KEY = 'jyoti_pending_buy';
 const PENDING_WINDOW_MS = 30 * 60 * 1000;
 
+// A friend's referral code, from this visit's URL or from an earlier one. The
+// URL is checked first because the page's own capture may not have run yet.
+function readRef(): string {
+  try {
+    return new URLSearchParams(location.search).get('ref')
+      ?? localStorage.getItem('jyoti_ref')
+      ?? '';
+  } catch { return ''; }
+}
+
 export default function PaymentReturnPrompt({ lang, onUnlocked }: {
   lang: 'ko' | 'zh' | 'en';
-  onUnlocked: (data: { token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number }) => void;
+  onUnlocked: (data: {
+    token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number;
+    ref?: string; referral?: string | null;
+  }) => void;
 }) {
   const s = STRINGS[lang];
   const [visible, setVisible] = useState(false);
@@ -92,7 +105,7 @@ export default function PaymentReturnPrompt({ lang, onUnlocked }: {
       const res = await fetch('/api/payment/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: c, lang }),
+        body: JSON.stringify({ code: c, lang, ref: readRef() }),
       });
       const data = await res.json();
       if (data.token) {

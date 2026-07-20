@@ -24,6 +24,25 @@ export function recordKey(code: string): string {
   return `order:${code}`;
 }
 
+// Referral codes are derived from the buyer's record key, so nothing has to be
+// generated or stored up front — only the reverse index ref:{CODE} -> recordKey,
+// written when the buyer claims. Lookalike characters (0/O, 1/I) are left out.
+const REF_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+const REF_LENGTH = 6;
+
+export function refCode(key: string): string {
+  const h = crypto.createHmac('sha256', process.env.JWT_SECRET!).update(`ref:${key}`).digest();
+  let out = '';
+  for (let i = 0; i < REF_LENGTH; i++) out += REF_ALPHABET[h[i] % REF_ALPHABET.length];
+  return out;
+}
+
+// Accepts what people actually paste: 'jyoti-3f9k', ' 3F9K ', with or without prefix.
+export function normalizeRef(input: string): string {
+  const s = input.toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/^JYOTI/, '');
+  return s.length === REF_LENGTH ? s : '';
+}
+
 // Stateless HMAC-signed token: base64url(payload).base64url(signature)
 // Verified in /api/interpret — payload shape must stay { themes: string[], exp: number };
 // extra fields (credits, code) are ignored there and used by /api/payment/use-credit.

@@ -99,6 +99,10 @@ export default function KoKundaliPage() {
   const [justUnlocked, setJustUnlocked] = useState(false);
   const [fullReport, setFullReport] = useState(false);
   const [loveReport, setLoveReport] = useState(false);
+  const [myRef, setMyRef] = useState('');
+  const [refNotice, setRefNotice] = useState('');
+  const [refCopied, setRefCopied] = useState(false);
+  const [refInput, setRefInput] = useState('');
 
   // Restore premium token from localStorage
   useEffect(() => {
@@ -117,8 +121,29 @@ export default function KoKundaliPage() {
     }
   }, []);
 
+  // A friend's referral code arrives as ?ref=XXXXXX and is kept until the
+  // visitor claims a purchase, which is the moment it pays out.
+  useEffect(() => {
+    try {
+      const r = new URLSearchParams(location.search).get('ref');
+      if (r) localStorage.setItem('jyoti_ref', r);
+      const mine = localStorage.getItem('jyoti_my_ref');
+      if (mine) setMyRef(mine);
+    } catch {}
+  }, []);
+
+  const REF_NOTICE: Record<string, string> = {
+    applied: '🎁 친구 추천이 확인되어 일반 이용권 1장이 추가됐어요',
+    invalid: '추천 코드를 찾지 못해 결제분만 열었어요',
+    used: '추천 코드는 한 번만 사용할 수 있어요',
+    self: '본인 추천 코드는 사용할 수 없어요',
+  };
+
   // Persists a token grant (from claim or use-credit) to state + localStorage.
-  function saveGrant(data: { token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number }) {
+  function saveGrant(data: {
+    token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number;
+    ref?: string; referral?: string | null;
+  }) {
     const c = { std: data.credits?.std ?? 0, prem: data.credits?.prem ?? 0 };
     localStorage.setItem('jyoti_premium_token', data.token);
     localStorage.setItem('jyoti_premium_themes', data.themes.join(','));
@@ -128,6 +153,14 @@ export default function KoKundaliPage() {
     setUnlockedThemes(data.themes);
     setCredits(c);
     setJustUnlocked(true);
+    if (data.ref) {
+      setMyRef(data.ref);
+      try { localStorage.setItem('jyoti_my_ref', data.ref); } catch {}
+    }
+    if (data.referral) {
+      setRefNotice(REF_NOTICE[data.referral] ?? '');
+      if (data.referral !== 'invalid') { try { localStorage.removeItem('jyoti_ref'); } catch {} }
+    }
     if (PREMIUM_THEMES_KO.every(t => data.themes.includes(t.id))) setFullReport(true);
     else if (LOVE_THEMES_KO.every(t => data.themes.includes(t.id))) setLoveReport(true);
   }
@@ -143,7 +176,7 @@ export default function KoKundaliPage() {
       const res = await fetch('/api/payment/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, lang: 'ko' }),
+        body: JSON.stringify({ code, lang: 'ko', ref: refInput.trim() || localStorage.getItem('jyoti_ref') || '' }),
       });
       const data = await res.json();
       if (data.token) {
@@ -725,12 +758,53 @@ export default function KoKundaliPage() {
                               {paymentLoading ? '확인 중...' : '🔓 열기'}
                             </button>
                           </div>
+                          <input
+                            value={refInput}
+                            onChange={e => setRefInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
+                            placeholder="친구 추천 코드 (선택) — 입력하면 이용권 1장 추가"
+                            className="w-full mt-1.5 px-3 py-1.5 rounded-lg text-xs"
+                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(134,239,172,0.2)', color: 'var(--text)' }}
+                          />
                           {paymentError && (
                             <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{paymentError}</p>
+                          )}
+                          {refNotice && (
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>{refNotice}</p>
                           )}
                           {justUnlocked && unlockedThemes.length > 0 && (
                             <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 결제 확인 완료! 잠금이 풀린 항목을 눌러 확인하세요</p>
                           )}
+                        </div>
+                        )}
+
+                        {/* Referral — shown once the buyer has a record of their own to share */}
+                        {myRef && (
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)' }}>
+                          <p className="text-xs font-cinzel mb-1" style={{ color: 'var(--gold-light)' }}>🎁 친구를 초대하고 이용권 받기</p>
+                          <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                            친구가 아래 코드로 결제를 열면 두 분 모두 일반 이용권을 1장씩 받아요 — 쌓인 이용권은 다음에 같은 번호로 열 때 보입니다
+                          </p>
+                          <div className="flex gap-1.5 flex-wrap items-center">
+                            <span className="px-3 py-1.5 rounded-lg text-sm font-cinzel font-bold tracking-widest"
+                              style={{ background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'var(--gold-light)' }}>
+                              {myRef}
+                            </span>
+                            <button
+                              onClick={() => {
+                                const url = `${location.origin}${location.pathname}?ref=${myRef}`;
+                                const text = `나니마의 베딕 점성술 — 추천 코드 ${myRef} 로 열면 이용권 1장을 받아요\n${url}`;
+                                if (navigator.share) { void navigator.share({ text }).catch(() => {}); return; }
+                                void navigator.clipboard.writeText(text).then(() => {
+                                  setRefCopied(true);
+                                  setTimeout(() => setRefCopied(false), 2500);
+                                }).catch(() => {});
+                              }}
+                              className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                              style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.4)', color: 'var(--gold-light)' }}>
+                              {refCopied ? '복사됐어요' : '📤 초대 링크 공유'}
+                            </button>
+                          </div>
                         </div>
                         )}
 
