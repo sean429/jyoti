@@ -24,6 +24,23 @@ export function recordKey(code: string): string {
   return `order:${code}`;
 }
 
+// One purchase writes three identity keys (order number, email, phone). Only
+// one of them holds the wallet; the others store { alias } pointing at it, so
+// the same credits are seen and spent no matter which one the buyer types.
+export type Record_ = { themes?: string[]; credits?: Partial<Credits>; [k: string]: unknown };
+
+export async function resolveRecord(key: string): Promise<{ key: string; rec: Record_ } | null> {
+  const raw = await redis(['GET', key]);
+  if (typeof raw !== 'string') return null;
+  let rec: Record_;
+  try { rec = JSON.parse(raw) as Record_; } catch { return null; }
+  if (typeof rec.alias !== 'string') return { key, rec };
+  // Pointers are only ever written one hop deep.
+  const target = await redis(['GET', rec.alias]);
+  if (typeof target !== 'string') return null;
+  try { return { key: rec.alias, rec: JSON.parse(target) as Record_ }; } catch { return null; }
+}
+
 // Referral codes are derived from the buyer's record key, so nothing has to be
 // generated or stored up front — only the reverse index ref:{CODE} -> recordKey,
 // written when the buyer claims. Lookalike characters (0/O, 1/I) are left out.

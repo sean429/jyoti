@@ -147,28 +147,49 @@ export async function POST(req: NextRequest) {
       hasEmail: !!email, phoneTail: phone.slice(-4), themes, credits,
     }));
 
-    if (orderId) {
-      await redis(['SET', `order:${orderId}`, JSON.stringify({ themes, credits, email, at }), 'EX', YEAR_SECONDS]);
-    }
-    // Merge with earlier purchases on identity keys so repeat buyers accumulate
-    // themes and credits. Phone is stored because Groble checkout always
+    // Merge with earlier purchases so repeat buyers accumulate themes and
+    // credits. Phone is preferred as the wallet because Groble checkout always
     // collects it, while email exists only for Groble members.
-    const mergeInto = async (key: string) => {
-      let mergedThemes = themes;
-      const mergedCredits: Credits = { ...credits };
+    const mergeInto = async (key: string, addThemes: string[], addCredits: Partial<Credits>) => {
+      let mergedThemes = addThemes;
+      const mergedCredits: Credits = { std: addCredits.std ?? 0, prem: addCredits.prem ?? 0 };
       const prev = await redis(['GET', key]);
       if (typeof prev === 'string') {
         try {
           const p = JSON.parse(prev);
-          mergedThemes = [...new Set([...(Array.isArray(p.themes) ? p.themes : []), ...themes])];
+          mergedThemes = [...new Set([...(Array.isArray(p.themes) ? p.themes : []), ...addThemes])];
           mergedCredits.std += p.credits?.std ?? 0;
           mergedCredits.prem += p.credits?.prem ?? 0;
         } catch {}
       }
       await redis(['SET', key, JSON.stringify({ themes: mergedThemes, credits: mergedCredits, at }), 'EX', YEAR_SECONDS]);
     };
-    if (email) await mergeInto(`email:${email}`);
-    if (/^01[016789][0-9]{7,8}$/.test(phone)) await mergeInto(`phone:${phone}`);
+
+    const phoneOk = /^01[016789][0-9]{7,8}$/.test(phone);
+    const wallet = phoneOk ? `phone:${phone}` : email ? `email:${email}` : orderId ? `order:${orderId}` : '';
+    if (!wallet) {
+      console.error('[groble-webhook] no identifier to store under:', orderId);
+      return NextResponse.json({ received: true, matched: false });
+    }
+    await mergeInto(wallet, themes, credits);
+
+    // The remaining identifiers become pointers, so one purchase has one wallet
+    // however the buyer opens it. A stand-alone record already sitting on a
+    // pointer key would be erased, so fold it into the wallet first.
+    const pointers = [orderId && `order:${orderId}`, email && `email:${email}`, phoneOk && `phone:${phone}`]
+      .filter((k): k is string => !!k && k !== wallet);
+    for (const k of pointers) {
+      const prev = await redis(['GET', k]);
+      if (typeof prev === 'string') {
+        try {
+          const p = JSON.parse(prev);
+          if (!p.alias && (p.themes?.length || p.credits?.std || p.credits?.prem)) {
+            await mergeInto(wallet, Array.isArray(p.themes) ? p.themes : [], p.credits ?? {});
+          }
+        } catch {}
+      }
+      await redis(['SET', k, JSON.stringify({ alias: wallet, at }), 'EX', YEAR_SECONDS]);
+    }
   } catch (err) {
     console.error('[groble-webhook] store error:', err instanceof Error ? err.message : err);
     // Non-2xx so Groble retries the delivery if it supports retry.

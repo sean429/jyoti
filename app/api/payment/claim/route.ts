@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, signToken, recordKey, refCode, normalizeRef, Credits, PREMIUM_THEME_IDS, LOVE_THEME_IDS } from '@/lib/premium-server';
+import { redis, signToken, recordKey, resolveRecord, refCode, normalizeRef, Credits, PREMIUM_THEME_IDS, LOVE_THEME_IDS } from '@/lib/premium-server';
 
 const YEAR_SECONDS = 31_536_000;
 // Caps what one referrer can earn, so a shared code can't drain us.
@@ -80,12 +80,14 @@ export async function POST(req: NextRequest) {
       }), 'EX', YEAR_SECONDS]);
     }
 
-    const raw = await redis(['GET', key]);
-    if (typeof raw !== 'string') {
+    // Order number, email and phone of one purchase share a single wallet;
+    // resolving gives the key that actually holds it.
+    const found = await resolveRecord(key);
+    if (!found) {
       return NextResponse.json({ error: MESSAGES.notFound[lk] }, { status: 404 });
     }
-
-    const rec = JSON.parse(raw) as { themes?: string[]; credits?: Partial<Credits>; [k: string]: unknown };
+    const walletKey = found.key;
+    const rec = found.rec;
     const themes = Array.isArray(rec.themes) ? rec.themes : [];
     const credits: Credits = { std: rec.credits?.std ?? 0, prem: rec.credits?.prem ?? 0 };
     if (!themes.length && !credits.std && !credits.prem) {
@@ -97,13 +99,14 @@ export async function POST(req: NextRequest) {
     const ref = normalizeRef(String(body.ref ?? ''));
     let referral: ReferralResult | null = null;
     if (ref && !isMaster) {
-      try { referral = await applyReferral(ref, key, rec, credits); }
+      try { referral = await applyReferral(ref, walletKey, rec, credits); }
       catch (e) { console.error('[payment/claim] referral:', e instanceof Error ? e.message : e); }
     }
 
-    // The buyer's own code to share, indexed so friends can redeem it.
-    const myRef = refCode(key);
-    await redis(['SET', `ref:${myRef}`, key, 'EX', YEAR_SECONDS]);
+    // The buyer's own code to share, indexed so friends can redeem it. Deriving
+    // it from the wallet gives one person one code across all their identifiers.
+    const myRef = refCode(walletKey);
+    await redis(['SET', `ref:${myRef}`, walletKey, 'EX', YEAR_SECONDS]);
 
     // code goes into the token so /api/payment/use-credit can find this record
     const exp = Date.now() + 86_400_000;

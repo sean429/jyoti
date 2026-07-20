@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { redis, signToken, verifyToken, recordKey, Credits, PREMIUM_THEME_IDS } from '@/lib/premium-server';
+import { redis, signToken, verifyToken, recordKey, resolveRecord, Credits, PREMIUM_THEME_IDS } from '@/lib/premium-server';
 
 const YEAR_SECONDS = 31_536_000;
 
@@ -50,12 +50,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: MESSAGES.tokenErr[lk] }, { status: 403 });
     }
 
-    const key = recordKey(code);
-    const raw = await redis(['GET', key]);
-    if (typeof raw !== 'string') {
+    // Spend from the wallet the identifier points at, not from a copy of it.
+    const found = await resolveRecord(recordKey(code));
+    if (!found) {
       return NextResponse.json({ error: MESSAGES.tokenErr[lk] }, { status: 404 });
     }
-    const rec = JSON.parse(raw) as { themes?: string[]; credits?: Partial<Credits>; [k: string]: unknown };
+    const key = found.key;
+    const rec = found.rec;
     const themes = Array.isArray(rec.themes) ? rec.themes : [];
     const credits: Credits = { std: rec.credits?.std ?? 0, prem: rec.credits?.prem ?? 0 };
 
