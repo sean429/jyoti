@@ -447,10 +447,11 @@ This is a free preview of the paid premium reading. Ignore the default response 
 * The answers readers want most (concrete timing, the list of fitting fields, the spouse profile, weak spots, this year's strategy, and the like) must NOT be answered — only signal that the full report covers them.
 * Paragraph 3 (two sentences): preview what the full report will reveal so curiosity builds, then close with one warm word from Nanima.
 * Use the budget: aim for 350–400 characters, not far less.`;
-    const FREE_BLOCK = `[Free summary reading — length is strict]
-This is the free summary reading. Completely ignore the default response structure (items 1–9) above and write only this:
-* No section headings — exactly 4 paragraphs: (1) first impression — the single strongest recurring theme of this chart; (2) core disposition — 2–3 sentences, anchored once in the chart in plain words; (3) the current dasha weather — 2–3 sentences; (4) one small practical tip and a warm closing word from Nanima.
-* Each paragraph 2–4 sentences; use the full budget — aim for 900–1,200 characters including spaces (Korean-character count; other output languages equivalent), and never exceed 1,200. Drop enumerations, keep only the most important insights, and always end on a complete sentence.
+    const FREE_BLOCK = `[Free summary reading — write a GENEROUS, satisfying reading]
+This is the free summary reading. It must feel full and substantial — a warm, complete portrait, NOT a thin teaser. Completely ignore the default response structure (items 1–9) above and write only this:
+* No section headings — exactly 5 paragraphs: (1) first impression — the single strongest recurring theme of this chart, drawn vividly; (2) core disposition — the person's real strengths and the way they naturally move through life, anchored once in the chart in plain words; (3) the pattern that repeats — a soft truth about what they crave or avoid, framed as "this is how it tends to work"; (4) the current dasha weather — what season of life they are in now and what it asks of them; (5) one small practical tip they can try today, plus a warm closing word from Nanima.
+* Each paragraph 3–4 full sentences. Use the whole budget: aim for 1,100–1,400 characters including spaces (Korean-character count; other output languages equivalent). Never fall below 1,000 characters and never exceed 1,500. Always end on a complete sentence.
+* Keep the plain-language Voice rules (no jargon chains), but do NOT clip the reading short in the name of concision — richness of insight matters more here than brevity.
 * You may include exactly one natural sentence noting that deep analysis of specific areas (career, love, health, this year, family) lives in the premium reports.`;
     // Deep-dive themes get their bespoke block, the 15 std topics get the
     // generic single-topic block, and free requests get the summary block.
