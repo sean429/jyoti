@@ -521,18 +521,17 @@ export default function ZhKundaliPage() {
                             }}>
                             ✦ 综合解读（免费）
                           </button>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(128px, 1fr))', gap: '6px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                             {THEMES.map(t => {
                               const unlocked = unlockedThemes.includes('std' + t.id);
                               return (
                               <button key={t.id}
                                 onClick={() => { setSelectedTheme(t); setActivePremium(null); }}
-                                className="px-2 py-1.5 rounded text-xs font-cinzel transition-all text-center"
+                                className="px-1 py-1.5 rounded text-[11px] font-cinzel transition-all text-center leading-tight"
                                 style={{
                                   background: selectedTheme?.id === t.id ? 'rgba(201,168,76,0.2)' : 'transparent',
                                   border: '1px solid rgba(201,168,76,0.2)',
                                   color: selectedTheme?.id === t.id || unlocked ? 'var(--gold-light)' : 'var(--text-muted)',
-                                  whiteSpace: 'nowrap',
                                 }}>
                                 {t.name} {unlocked ? '🔓' : '🔒'}
                               </button>
@@ -550,19 +549,19 @@ export default function ZhKundaliPage() {
                               <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
                                 锁定的主题可先免费预览 — 购买后输入付款手机号即可充值使用券，自选主题解锁
                               </p>
-                              <div className="flex flex-wrap gap-2">
+                              <div className="flex flex-col items-center gap-2">
                                 {GROBLE_URLS.stdSingle && (
-                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 单项主题 ₩2,000
+                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 使用券1张 ₩2,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.stdFive && (
-                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 5项主题 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩10,000</s> ₩5,000 · 省50%
+                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 使用券5张 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩10,000</s> ₩5,000 · 省50%
                                   </a>
                                 )}
                                 {GROBLE_URLS.stdAll && (
-                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
+                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
                                     💳 全部15项 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩30,000</s> ₩12,900 · 省57%
                                   </a>
                                 )}
@@ -610,8 +609,8 @@ export default function ZhKundaliPage() {
                           ) : (
                             <div className="mb-1">
                               {GROBLE_URLS.love && (
-                                <div className="mb-2">
-                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
+                                <div className="mb-2 flex justify-center">
+                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
                                     💘 恋爱专项报告PDF <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,900</s> ₩11,900 · 省40%
                                   </a>
                                 </div>
@@ -670,58 +669,65 @@ export default function ZhKundaliPage() {
                           )}
                           {!premiumAllUnlocked && (
                             <div className="mb-2">
-                              <div className="flex flex-wrap gap-2 mb-2 items-center">
+                              <div className="flex flex-col items-center gap-2 mb-2">
                                 {GROBLE_URLS.single && (
-                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 单项主题 ₩3,900
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 高级使用券1张 ₩3,900
                                   </a>
                                 )}
                                 {GROBLE_URLS.trio && (
-                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 3项主题 ₩10,000
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 高级使用券3张 ₩10,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.all && (
-                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
-                                    🏆 推荐 · 📕 完整PDF报告 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900 · 立减₩24,000
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🏆 📕 完整PDF报告 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900
                                   </a>
                                 )}
                               </div>
-                              <p className="text-[10px] mb-1" style={{ color: 'rgba(230,193,90,0.75)' }}>
+                              <p className="text-[10px] mb-1 text-center" style={{ color: 'rgba(230,193,90,0.75)' }}>
                                 📕 完整PDF报告：一次解读5个主题，生成带封面与章节的完整PDF报告
                               </p>
-                              <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                                完成支付后，在下方输入付款手机号即可充值使用券 — 自选主题解锁
-                              </p>
-                              <div className="flex gap-1.5 flex-wrap">
-                                <input
-                                  value={claimCode}
-                                  onChange={e => setClaimCode(e.target.value)}
-                                  onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
-                                  placeholder="付款手机号（或邮箱·订单号）"
-                                  className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
-                                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(167,139,250,0.25)', color: 'var(--text)' }}
-                                />
-                                <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
-                                  style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
-                                  {paymentLoading ? '验证中...' : '🔓 解锁解读'}
-                                </button>
-                              </div>
                             </div>
                           )}
+                          {unlockedThemes.length > 0 && (
+                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
+                              🔓 标记的主题已完成支付 — 点击即可查看解读（本次有效24小时，之后可用同一手机号再次解锁）
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Payment confirmation — its own card so buyers can always find it */}
+                        {!(premiumAllUnlocked && stdAllUnlocked && loveAllUnlocked) && (
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(134,239,172,0.25)' }}>
+                          <p className="text-xs font-cinzel mb-1" style={{ color: '#86efac' }}>🔓 确认付款 — 解锁已购内容</p>
+                          <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                            完成支付后，输入付款手机号 — 使用券与报告立即解锁
+                          </p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            <input
+                              value={claimCode}
+                              onChange={e => setClaimCode(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
+                              placeholder="付款手机号（或邮箱·订单号）"
+                              className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(134,239,172,0.3)', color: 'var(--text)' }}
+                            />
+                            <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
+                              className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                              style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(134,239,172,0.4)', color: '#86efac' }}>
+                              {paymentLoading ? '验证中...' : '🔓 解锁'}
+                            </button>
+                          </div>
                           {paymentError && (
                             <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{paymentError}</p>
                           )}
                           {justUnlocked && unlockedThemes.length > 0 && (
-                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 支付确认成功！点击主题即可查看解读</p>
-                          )}
-                          {unlockedThemes.length > 0 && (
-                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                              🔓 标记的主题已完成支付 — 点击即可查看解读（本次有效24小时，之后可用同一邮箱再次解锁）
-                            </p>
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 支付确认成功！点击已解锁的内容查看</p>
                           )}
                         </div>
+                        )}
 
                         {/* Custom question — paid feature, opened with one prem credit */}
                         {!fullReport && !loveReport && (

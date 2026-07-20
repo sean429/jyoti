@@ -343,8 +343,8 @@ export default function EnKundaliPage() {
                           ) : (
                             <div className="mb-1">
                               {GROBLE_URLS.love && (
-                                <div className="mb-2">
-                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
+                                <div className="mb-2 flex justify-center">
+                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
                                     💘 Love Report PDF <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,900</s> ₩11,900 · 40% off
                                   </a>
                                 </div>
@@ -402,58 +402,65 @@ export default function EnKundaliPage() {
                           )}
                           {!premiumAllUnlocked && (
                             <div className="mb-2">
-                              <div className="flex flex-wrap gap-2 mb-2 items-center">
+                              <div className="flex flex-col items-center gap-2 mb-2">
                                 {GROBLE_URLS.single && (
-                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 1 theme ₩3,900
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 1 premium credit ₩3,900
                                   </a>
                                 )}
                                 {GROBLE_URLS.trio && (
-                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 3 themes ₩10,000
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 3 premium credits ₩10,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.all && (
-                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
-                                    🏆 📕 Full PDF Report <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900 · ₩24,000 off
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🏆 📕 Full PDF Report <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900
                                   </a>
                                 )}
                               </div>
-                              <p className="text-[10px] mb-1" style={{ color: 'rgba(230,193,90,0.75)' }}>
+                              <p className="text-[10px] mb-1 text-center" style={{ color: 'rgba(230,193,90,0.75)' }}>
                                 📕 Full PDF Report: all 5 themes read in one go, saved as a single PDF with cover and chapters
                               </p>
-                              <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                                After paying, enter the phone number you used at checkout below to unlock instantly
-                              </p>
-                              <div className="flex gap-1.5 flex-wrap">
-                                <input
-                                  value={claimCode}
-                                  onChange={e => setClaimCode(e.target.value)}
-                                  onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
-                                  placeholder="Payment phone number (or email / order no.)"
-                                  className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
-                                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(167,139,250,0.25)', color: 'var(--text)' }}
-                                />
-                                <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
-                                  style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
-                                  {paymentLoading ? 'Checking...' : '🔓 Unlock'}
-                                </button>
-                              </div>
                             </div>
                           )}
+                          {unlockedThemes.length > 0 && (
+                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
+                              🔓 marked themes are paid — tap one to view its reading (24h per unlock; re-enter your phone number anytime to unlock again)
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Payment confirmation — its own card so buyers can always find it */}
+                        {!premiumAllUnlocked && (
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(134,239,172,0.25)' }}>
+                          <p className="text-xs font-cinzel mb-1" style={{ color: '#86efac' }}>🔓 Confirm payment — unlock what you bought</p>
+                          <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                            After paying, enter the phone number you used at checkout — credits and reports unlock instantly
+                          </p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            <input
+                              value={claimCode}
+                              onChange={e => setClaimCode(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
+                              placeholder="Payment phone number (or email / order no.)"
+                              className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(134,239,172,0.3)', color: 'var(--text)' }}
+                            />
+                            <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
+                              className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                              style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(134,239,172,0.4)', color: '#86efac' }}>
+                              {paymentLoading ? 'Checking...' : '🔓 Unlock'}
+                            </button>
+                          </div>
                           {paymentError && (
                             <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{paymentError}</p>
                           )}
                           {justUnlocked && unlockedThemes.length > 0 && (
-                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ Payment confirmed! Tap a theme to view its reading</p>
-                          )}
-                          {unlockedThemes.length > 0 && (
-                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                              🔓 marked themes are paid — tap one to view its reading (24h per unlock; re-enter your email anytime to unlock again)
-                            </p>
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ Payment confirmed! Tap an unlocked item to view it</p>
                           )}
                         </div>
+                        )}
 
                         {/* Custom question — paid feature, opened with one prem credit */}
                         {!fullReport && !loveReport && (

@@ -526,18 +526,17 @@ export default function KoKundaliPage() {
                             }}>
                             ✦ 종합 운세 (무료)
                           </button>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(128px, 1fr))', gap: '6px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
                             {THEMES.map(t => {
                               const unlocked = unlockedThemes.includes('std' + t.id);
                               return (
                               <button key={t.id}
                                 onClick={() => { setSelectedTheme(t); setActivePremium(null); }}
-                                className="px-2 py-1.5 rounded text-xs font-cinzel transition-all text-center"
+                                className="px-1 py-1.5 rounded text-[11px] font-cinzel transition-all text-center leading-tight"
                                 style={{
                                   background: selectedTheme?.id === t.id ? 'rgba(201,168,76,0.2)' : 'transparent',
                                   border: '1px solid rgba(201,168,76,0.2)',
                                   color: selectedTheme?.id === t.id || unlocked ? 'var(--gold-light)' : 'var(--text-muted)',
-                                  whiteSpace: 'nowrap',
                                 }}>
                                 {t.name} {unlocked ? '🔓' : '🔒'}
                               </button>
@@ -555,19 +554,19 @@ export default function KoKundaliPage() {
                               <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
                                 잠긴 테마는 무료 미리보기로 맛볼 수 있어요 — 구매 후 결제하신 전화번호를 입력하면 이용권이 충전되고, 원하는 테마를 골라 열 수 있어요
                               </p>
-                              <div className="flex flex-wrap gap-2">
+                              <div className="flex flex-col items-center gap-2">
                                 {GROBLE_URLS.stdSingle && (
-                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 테마 1개 ₩2,000
+                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 이용권 1장 ₩2,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.stdFive && (
-                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 테마 5개 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩10,000</s> ₩5,000 · 50%↓
+                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 이용권 5장 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩10,000</s> ₩5,000 · 50%↓
                                   </a>
                                 )}
                                 {GROBLE_URLS.stdAll && (
-                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
+                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
                                     💳 15개 전부 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩30,000</s> ₩12,900 · 57%↓
                                   </a>
                                 )}
@@ -615,8 +614,8 @@ export default function KoKundaliPage() {
                           ) : (
                             <div className="mb-1">
                               {GROBLE_URLS.love && (
-                                <div className="mb-2">
-                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
+                                <div className="mb-2 flex justify-center">
+                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
                                     💘 연애 집중 리포트 PDF <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,900</s> ₩11,900 · 40%↓
                                   </a>
                                 </div>
@@ -675,58 +674,65 @@ export default function KoKundaliPage() {
                           )}
                           {!premiumAllUnlocked && (
                             <div className="mb-2">
-                              <div className="flex flex-wrap gap-2 mb-2 items-center">
+                              <div className="flex flex-col items-center gap-2 mb-2">
                                 {GROBLE_URLS.single && (
-                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 테마 1개 ₩3,900
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 프리미엄 이용권 1장 ₩3,900
                                   </a>
                                 )}
                                 {GROBLE_URLS.trio && (
-                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
-                                    💳 테마 3개 ₩10,000
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 프리미엄 이용권 3장 ₩10,000
                                   </a>
                                 )}
                                 {GROBLE_URLS.all && (
-                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best">
-                                    🏆 추천 · 📕 통합 PDF 보고서 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900 · ₩24,000 할인
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🏆 📕 통합 PDF 보고서 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900
                                   </a>
                                 )}
                               </div>
-                              <p className="text-[10px] mb-1" style={{ color: 'rgba(230,193,90,0.75)' }}>
+                              <p className="text-[10px] mb-1 text-center" style={{ color: 'rgba(230,193,90,0.75)' }}>
                                 📕 통합 PDF 보고서: 5개 테마를 한 번에 해석해 표지·챕터가 갖춰진 PDF 한 권으로 저장할 수 있어요
                               </p>
-                              <p className="text-[10px] mb-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                                결제 완료 후, 결제하신 전화번호를 아래에 입력하면 이용권이 충전됩니다 — 원하는 테마를 골라 여세요
-                              </p>
-                              <div className="flex gap-1.5 flex-wrap">
-                                <input
-                                  value={claimCode}
-                                  onChange={e => setClaimCode(e.target.value)}
-                                  onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
-                                  placeholder="결제하신 전화번호 (또는 이메일·주문번호)"
-                                  className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
-                                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(167,139,250,0.25)', color: 'var(--text)' }}
-                                />
-                                <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
-                                  style={{ background: 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
-                                  {paymentLoading ? '확인 중...' : '🔓 해석 열기'}
-                                </button>
-                              </div>
                             </div>
                           )}
+                          {unlockedThemes.length > 0 && (
+                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
+                              🔓 표시된 테마는 결제 완료 — 눌러서 해석을 확인하세요 (열람 24시간, 이후 같은 번호로 다시 열 수 있어요)
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Payment confirmation — its own card so buyers can always find it */}
+                        {!(premiumAllUnlocked && stdAllUnlocked && loveAllUnlocked) && (
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(134,239,172,0.25)' }}>
+                          <p className="text-xs font-cinzel mb-1" style={{ color: '#86efac' }}>🔓 결제 확인 — 구매한 것 열기</p>
+                          <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                            결제를 마치셨다면 결제에 사용한 전화번호를 입력하세요 — 이용권과 리포트가 바로 열립니다
+                          </p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            <input
+                              value={claimCode}
+                              onChange={e => setClaimCode(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
+                              placeholder="결제하신 전화번호 (또는 이메일·주문번호)"
+                              className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(134,239,172,0.3)', color: 'var(--text)' }}
+                            />
+                            <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
+                              className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                              style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(134,239,172,0.4)', color: '#86efac' }}>
+                              {paymentLoading ? '확인 중...' : '🔓 열기'}
+                            </button>
+                          </div>
                           {paymentError && (
                             <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{paymentError}</p>
                           )}
                           {justUnlocked && unlockedThemes.length > 0 && (
-                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 결제 확인 완료! 테마를 눌러 해석을 확인하세요</p>
-                          )}
-                          {unlockedThemes.length > 0 && (
-                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
-                              🔓 표시된 테마는 결제 완료 — 눌러서 해석을 확인하세요 (열람 24시간, 이후 같은 이메일로 다시 열 수 있어요)
-                            </p>
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 결제 확인 완료! 잠금이 풀린 항목을 눌러 확인하세요</p>
                           )}
                         </div>
+                        )}
 
                         {/* Custom question — paid feature, opened with one prem credit */}
                         {!fullReport && !loveReport && (
