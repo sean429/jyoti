@@ -174,7 +174,7 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
               </>
             ) : (
               <>
-                <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Powered by Gemini AI</p>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Powered by AI</p>
                 <p className="text-xs" style={{ color: 'rgba(156,163,175,0.6)' }}>
                   Get a detailed personalized reading based on your Kundali
                 </p>

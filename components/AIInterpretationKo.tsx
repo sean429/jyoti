@@ -161,7 +161,7 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
               </>
             ) : (
               <>
-                <p className='text-sm mb-1' style={{ color: 'var(--text-muted)' }}>Gemini AI가 베딕 차트를 해석합니다</p>
+                <p className='text-sm mb-1' style={{ color: 'var(--text-muted)' }}>AI가 베딕 차트를 해석합니다</p>
                 <p className='text-xs' style={{ color: 'rgba(156,163,175,0.6)' }}>
                   성격, 운명, 대운, 나크샤트라 기반으로 분석합니다
                 </p>
