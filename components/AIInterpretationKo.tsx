@@ -70,18 +70,30 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
 
   async function generate() {
     setLoading(true); setError(''); setInterpretation(''); setLastThemeId(themeKey);
-    try {
-      const res = await fetch('/api/interpret', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart, birthInfo, lang: 'ko', theme, premiumToken }),
-      });
-      const data = await res.json();
-      if (data.error) setError(data.error);
-      else {
-        setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true);
-        try { sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.interpretation, preview: !!data.preview })); } catch {}
+    // Silently retry transient throttles (429/5xx/network) behind the loading
+    // animation so a busy free-tier moment never surfaces as an error.
+    const RETRY_DELAYS = [1500, 3500];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const res = await fetch('/api/interpret', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chart, birthInfo, lang: 'ko', theme, premiumToken }),
+        });
+        const data = await res.json();
+        if (res.ok && data.interpretation) {
+          setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true);
+          try { sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.interpretation, preview: !!data.preview })); } catch {}
+          break;
+        }
+        if ((res.status === 429 || res.status >= 500) && attempt < RETRY_DELAYS.length) {
+          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue;
+        }
+        setError(data.error ?? 'AI 해석 요청에 실패했습니다. 다시 시도해주세요.'); break;
+      } catch {
+        if (attempt < RETRY_DELAYS.length) { await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue; }
+        setError('AI 해석 요청에 실패했습니다. 다시 시도해주세요.'); break;
       }
-    } catch { setError('AI 해석 요청에 실패했습니다. 다시 시도해주세요.'); }
+    }
     setLoading(false);
   }
 

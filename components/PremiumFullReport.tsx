@@ -78,25 +78,39 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
 
   async function generate() {
     setError('');
+    const RETRY_DELAYS = [1500, 3500];
     let acc = sections;
+    outer:
     for (let i = acc.length; i < themes.length; i++) {
       const t = themes[i];
       setCurrent(i);
-      try {
-        const res = await fetch('/api/interpret', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chart, birthInfo, lang,
-            theme: { name: t.name, desc: t.desc, d2: t.d2, premiumId: t.id },
-            premiumToken,
-          }),
-        });
-        const data = await res.json();
-        if (data.error || !data.interpretation) { setError(data.error ?? S.failed); break; }
-        acc = [...acc, { theme: t, text: data.interpretation }];
-        setSections(acc);
-        try { sessionStorage.setItem(cacheKey, JSON.stringify(acc.map(s => ({ id: s.theme.id, text: s.text })))); } catch {}
-      } catch { setError(S.failed); break; }
+      // Silently retry transient throttles so one hiccup doesn't stall the report.
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const res = await fetch('/api/interpret', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chart, birthInfo, lang,
+              theme: { name: t.name, desc: t.desc, d2: t.d2, premiumId: t.id },
+              premiumToken,
+            }),
+          });
+          const data = await res.json();
+          if (res.ok && data.interpretation) {
+            acc = [...acc, { theme: t, text: data.interpretation }];
+            setSections(acc);
+            try { sessionStorage.setItem(cacheKey, JSON.stringify(acc.map(s => ({ id: s.theme.id, text: s.text })))); } catch {}
+            break;
+          }
+          if ((res.status === 429 || res.status >= 500) && attempt < RETRY_DELAYS.length) {
+            await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue;
+          }
+          setError(data.error ?? S.failed); break outer;
+        } catch {
+          if (attempt < RETRY_DELAYS.length) { await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue; }
+          setError(S.failed); break outer;
+        }
+      }
     }
     setCurrent(-1);
   }

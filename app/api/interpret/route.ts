@@ -3,6 +3,10 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import crypto from 'crypto';
 import { redis } from '@/lib/premium-server';
 
+// Headroom for slow generations plus one server-side retry (see below);
+// keeps long readings from being cut off by the platform's default limit.
+export const maxDuration = 60;
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // ---------------------------------------------------------------------------
@@ -593,8 +597,22 @@ ${lang === 'ko' ? 'Write your entire response in Korean only.' : lang === 'zh' ?
       generationConfig: { maxOutputTokens: 8192, temperature: 0.8 },
     });
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    // One in-server retry on transient throttle/overload (429/503) so a brief
+    // free-tier hiccup becomes a slightly slower success instead of an error.
+    let text: string;
+    try {
+      const result = await model.generateContent(prompt);
+      text = result.response.text();
+    } catch (e) {
+      const m = e instanceof Error ? e.message.toLowerCase() : '';
+      if (m.includes('429') || m.includes('quota') || m.includes('rate') || m.includes('503') || m.includes('overloaded') || m.includes('unavailable')) {
+        await new Promise(r => setTimeout(r, 1500));
+        const result = await model.generateContent(prompt);
+        text = result.response.text();
+      } else {
+        throw e;
+      }
+    }
 
     // Fire-and-forget usage counters for the "N read their stars today" line —
     // never let stats failures affect the reading itself.

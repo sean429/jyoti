@@ -69,18 +69,29 @@ export default function AIInterpretationZh({ chart, birthInfo, theme, premiumTok
 
   async function generate() {
     setLoading(true); setError(''); setInterpretation(''); setLastThemeId(themeKey);
-    try {
-      const res = await fetch('/api/interpret', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart, birthInfo, lang: 'zh', theme, premiumToken }),
-      });
-      const data = await res.json();
-      if (data.error) setError(data.error);
-      else {
-        setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true);
-        try { sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.interpretation, preview: !!data.preview })); } catch {}
+    // Silently retry transient throttles behind the loading animation.
+    const RETRY_DELAYS = [1500, 3500];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const res = await fetch('/api/interpret', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chart, birthInfo, lang: 'zh', theme, premiumToken }),
+        });
+        const data = await res.json();
+        if (res.ok && data.interpretation) {
+          setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true);
+          try { sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.interpretation, preview: !!data.preview })); } catch {}
+          break;
+        }
+        if ((res.status === 429 || res.status >= 500) && attempt < RETRY_DELAYS.length) {
+          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue;
+        }
+        setError(data.error ?? '连接失败，请重试。'); break;
+      } catch {
+        if (attempt < RETRY_DELAYS.length) { await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue; }
+        setError('连接失败，请重试。'); break;
       }
-    } catch { setError('连接失败，请重试。'); }
+    }
     setLoading(false);
   }
 

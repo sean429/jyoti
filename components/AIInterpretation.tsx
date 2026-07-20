@@ -72,19 +72,30 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
     setError('');
     setInterpretation('');
     setLastThemeId(themeKey);
-    try {
-      const res = await fetch('/api/interpret', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart, birthInfo, lang: 'en', theme, premiumToken }),
-      });
-      const data = await res.json();
-      if (data.error) setError(data.error);
-      else {
-        setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true);
-        try { sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.interpretation, preview: !!data.preview })); } catch {}
+    // Silently retry transient throttles behind the loading animation.
+    const RETRY_DELAYS = [1500, 3500];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const res = await fetch('/api/interpret', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chart, birthInfo, lang: 'en', theme, premiumToken }),
+        });
+        const data = await res.json();
+        if (res.ok && data.interpretation) {
+          setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true);
+          try { sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.interpretation, preview: !!data.preview })); } catch {}
+          break;
+        }
+        if ((res.status === 429 || res.status >= 500) && attempt < RETRY_DELAYS.length) {
+          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue;
+        }
+        setError(data.error ?? 'Connection error. Please try again.'); break;
+      } catch {
+        if (attempt < RETRY_DELAYS.length) { await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue; }
+        setError('Connection error. Please try again.'); break;
       }
-    } catch { setError('Connection error. Please try again.'); }
+    }
     setLoading(false);
   }
 
