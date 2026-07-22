@@ -253,218 +253,94 @@ This is a PAID reading of one specific topic the buyer chose (see the theme name
 * Go as deep as a premium reading. The Voice rules above still apply: plain words, sparse chart anchors, no jargon chains.
 * End with Nanima's 2–3 practical suggestions for this topic and one warm closing line.`;
 
-function verifyPremiumToken(token: string): { themes: string[]; exp: number } {
-  const dotIdx = token.lastIndexOf('.');
-  if (dotIdx < 0) throw new Error('malformed');
-  const data = token.slice(0, dotIdx);
-  const sig = token.slice(dotIdx + 1);
-  const expected = crypto.createHmac('sha256', process.env.JWT_SECRET!).update(data).digest('base64url');
-  const sigBuf = Buffer.from(sig, 'base64url');
-  const expBuf = Buffer.from(expected, 'base64url');
-  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) throw new Error('invalid');
-  const payload = JSON.parse(Buffer.from(data, 'base64url').toString());
-  if (typeof payload.exp !== 'number' || payload.exp < Date.now()) throw new Error('expired');
-  return payload;
-}
+// Builds the exact reading prompt. Exported so a comparison harness can send
+// the identical string to other models; the production POST path uses it too.
+export function buildReadingPrompt(
+  { chart, birthInfo, theme, lang, previewMode }:
+  { chart: any; birthInfo: any; theme: any; lang: string; previewMode: boolean }
+): string {
+  const safeName      = sanitize(birthInfo?.name,  80);
+  const safePlace     = sanitize(birthInfo?.place, 100);
+  const safeThemeName = sanitize(theme?.name,      60);
+  const safeThemeDesc = sanitize(theme?.desc,      500);
 
-// ---------------------------------------------------------------------------
-// In-memory rate limiter — best-effort in serverless (resets per cold start).
-// Replace with Upstash/Vercel KV for cross-instance enforcement.
-// ---------------------------------------------------------------------------
-// RATE_MAX must comfortably exceed 5: the full-report mode fires 5 sequential
-// interpret calls, and fast generations can land inside one window.
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX       = 8;
-const ipMap = new Map<string, { count: number; resetAt: number }>();
+  const SIGN_NAMES = [
+    'Mesha (Aries)', 'Vrishabha (Taurus)', 'Mithuna (Gemini)', 'Karka (Cancer)',
+    'Simha (Leo)', 'Kanya (Virgo)', 'Tula (Libra)', 'Vrishchika (Scorpio)',
+    'Dhanu (Sagittarius)', 'Makara (Capricorn)', 'Kumbha (Aquarius)', 'Meena (Pisces)',
+  ];
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = ipMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    ipMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return true;
-  }
-  if (entry.count >= RATE_MAX) return false;
-  entry.count++;
-  return true;
-}
+  const currentDasha = chart.dashas?.find((d: { isCurrent: boolean }) => d.isCurrent);
+  const currentSubDasha = currentDasha?.subDashas?.find((s: { isCurrent: boolean }) => s.isCurrent);
 
-// ---------------------------------------------------------------------------
-// Sanitize user-controlled string fields before prompt interpolation.
-// These are untrusted data, not instructions.
-// ---------------------------------------------------------------------------
-function sanitize(value: unknown, maxLen = 120): string {
-  if (typeof value !== 'string') return '';
-  return value
-    .slice(0, maxLen)
-    .replace(/[\n\r`<>]/g, ' ')
-    .trim();
-}
+  const planetList = chart.planets
+    ?.map((p: { name: string; sign: string; house: number; nakshatra: string; isRetrograde: boolean }) =>
+      `${p.name}: ${p.sign} (House ${p.house}, Nakshatra: ${p.nakshatra}${p.isRetrograde ? ', Retrograde' : ''})`
+    ).join('\n');
 
-// ---------------------------------------------------------------------------
-// Map Gemini error codes to safe user-facing messages (lang-aware).
-// ---------------------------------------------------------------------------
-function safeErrorMessage(err: unknown, lang = 'ko'): { status: number; message: string } {
-  const msg = err instanceof Error ? err.message.toLowerCase() : '';
-  if (msg.includes('503') || msg.includes('overloaded') || msg.includes('unavailable'))
-    return {
-      status: 503,
-      message: lang === 'zh'
-        ? 'AI解读服务暂时繁忙，请稍后再试。'
-        : lang === 'en'
-          ? 'The AI service is temporarily overloaded. Please try again shortly.'
-          : '현재 AI 해석 서버가 일시적으로 혼잡합니다. 잠시 후 다시 시도해주세요.',
-    };
-  if (msg.includes('429') || msg.includes('quota') || msg.includes('rate'))
-    return {
-      status: 429,
-      message: lang === 'zh'
-        ? '请求过于频繁，请稍后再试。'
-        : lang === 'en'
-          ? 'Too many requests. Please try again shortly.'
-          : '요청이 일시적으로 많습니다. 잠시 후 다시 시도해주세요.',
-    };
-  return {
-    status: 500,
-    message: lang === 'zh'
-      ? '生成解读时出现问题，请稍后再试。'
-      : lang === 'en'
-        ? 'An error occurred while generating the interpretation. Please try again.'
-        : '해석 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
-  };
-}
-
-export async function POST(req: NextRequest) {
-  // Rate limit check
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  if (!checkRateLimit(ip)) {
-    return NextResponse.json(
-      { error: '요청이 일시적으로 많습니다. 잠시 후 다시 시도해주세요.' },
-      { status: 429 }
-    );
+  let divPlanetList = '';
+  if (theme?.d2) {
+    const dKey = `D${theme.d2}`;
+    const divLagna = (chart as any).divisionalLagnas?.[dKey];
+    divPlanetList = chart.planets
+      ?.map((p: any) => {
+        const div = p.divisional?.[dKey];
+        if (!div) return null;
+        return `${p.name}: ${div.sign} (House ${div.house})`;
+      })
+      .filter(Boolean)
+      .join('\n');
+    if (divLagna) {
+      divPlanetList = `Lagna in ${dKey}: ${divLagna.sign}\n` + divPlanetList;
+    }
   }
 
-  let lang = 'ko';
-  try {
-    const body = await req.json();
-    lang = body.lang ?? 'ko';
-    const { chart, birthInfo, theme, premiumToken } = body;
+  const selectedDivisions = theme?.d2 ? `D1, D${theme.d2}` : 'D1';
 
-    // Premium theme gate — without a valid token we serve a short free PREVIEW
-    // instead of the full paid reading (never the full text, so nothing to leak).
-    // An explicitly provided but expired/broken token still gets a clear error.
-    let previewMode = false;
-    if (theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId)) {
-      const tokenErr = {
-        ko: '결제 정보가 만료되었거나 유효하지 않습니다. 결제하신 이메일로 다시 잠금 해제해주세요.',
-        en: 'Payment expired or invalid. Please unlock again with your payment email.',
-        zh: '支付信息已过期或无效，请用付款邮箱重新解锁。',
-      };
-      const lk = (lang === 'zh' ? 'zh' : lang === 'en' ? 'en' : 'ko') as 'ko' | 'en' | 'zh';
-      if (!premiumToken || !process.env.JWT_SECRET) {
-        previewMode = true;
-      } else {
-        try {
-          const payload = verifyPremiumToken(premiumToken);
-          if (!Array.isArray(payload.themes) || !payload.themes.includes(theme.premiumId)) {
-            previewMode = true;
-          }
-        } catch {
-          return NextResponse.json({ error: tokenErr[lk] }, { status: 403 });
-        }
-      }
-    }
+  const vimshottariStr = [
+    currentDasha
+      ? `Mahadasha: ${currentDasha.lord} (${currentDasha.startDate ? new Date(currentDasha.startDate).getFullYear() : '?'}~${currentDasha.endDate ? new Date(currentDasha.endDate).getFullYear() : '?'})`
+      : null,
+    currentSubDasha ? `Antardasha: ${currentSubDasha.lord}` : null,
+    currentSubDasha?.subDashas?.find((p: { isCurrent: boolean }) => p.isCurrent)
+      ? `Pratyantardasha: ${currentSubDasha.subDashas.find((p: { isCurrent: boolean }) => p.isCurrent).lord}`
+      : null,
+  ].filter(Boolean).join('\n') || '(none)';
 
-    // Sanitize all user-controlled fields (untrusted data, not instructions)
-    const safeName      = sanitize(birthInfo?.name,  80);
-    const safePlace     = sanitize(birthInfo?.place, 100);
-    const safeThemeName = sanitize(theme?.name,      60);
-    const safeThemeDesc = sanitize(theme?.desc,      500);
+  const panchanagaStr: string = (() => {
+    const p = (chart as any).panchanga;
+    if (!p) return '(no data)';
+    return typeof p === 'object' ? JSON.stringify(p, null, 2) : String(p);
+  })();
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'AI 서비스가 현재 설정되지 않았습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
-    }
+  const lagnaLine = `Lagna (D1): ${SIGN_NAMES[chart.lagnaSign]} (${chart.lagna?.toFixed(2)}°), Ayanamsa: ${chart.ayanamsa?.toFixed(4)}°`;
+  const chartPlacementsStr = [lagnaLine, planetList, divPlanetList || null].filter(Boolean).join('\n');
 
-    const SIGN_NAMES = [
-      'Mesha (Aries)', 'Vrishabha (Taurus)', 'Mithuna (Gemini)', 'Karka (Cancer)',
-      'Simha (Leo)', 'Kanya (Virgo)', 'Tula (Libra)', 'Vrishchika (Scorpio)',
-      'Dhanu (Sagittarius)', 'Makara (Capricorn)', 'Kumbha (Aquarius)', 'Meena (Pisces)',
-    ];
+  const userQuestion = safeThemeDesc || '(none)';
+  const optionalProfile = safeThemeName ? `Theme: ${safeThemeName}` : '(none)';
 
-    const currentDasha = chart.dashas?.find((d: { isCurrent: boolean }) => d.isCurrent);
-    const currentSubDasha = currentDasha?.subDashas?.find((s: { isCurrent: boolean }) => s.isCurrent);
-
-    // D1 planet list
-    const planetList = chart.planets
-      ?.map((p: { name: string; sign: string; house: number; nakshatra: string; isRetrograde: boolean }) =>
-        `${p.name}: ${p.sign} (House ${p.house}, Nakshatra: ${p.nakshatra}${p.isRetrograde ? ', Retrograde' : ''})`
-      ).join('\n');
-
-    // Divisional chart planet list (when theme provided)
-    let divPlanetList = '';
-    if (theme?.d2) {
-      const dKey = `D${theme.d2}`;
-      const divLagna = (chart as any).divisionalLagnas?.[dKey];
-      divPlanetList = chart.planets
-        ?.map((p: any) => {
-          const div = p.divisional?.[dKey];
-          if (!div) return null;
-          return `${p.name}: ${div.sign} (House ${div.house})`;
-        })
-        .filter(Boolean)
-        .join('\n');
-      if (divLagna) {
-        divPlanetList = `Lagna in ${dKey}: ${divLagna.sign}\n` + divPlanetList;
-      }
-    }
-
-    // Build template variables for the unified Nanima prompt
-    const selectedDivisions = theme?.d2 ? `D1, D${theme.d2}` : 'D1';
-
-    const vimshottariStr = [
-      currentDasha
-        ? `Mahadasha: ${currentDasha.lord} (${currentDasha.startDate ? new Date(currentDasha.startDate).getFullYear() : '?'}~${currentDasha.endDate ? new Date(currentDasha.endDate).getFullYear() : '?'})`
-        : null,
-      currentSubDasha ? `Antardasha: ${currentSubDasha.lord}` : null,
-      currentSubDasha?.subDashas?.find((p: { isCurrent: boolean }) => p.isCurrent)
-        ? `Pratyantardasha: ${currentSubDasha.subDashas.find((p: { isCurrent: boolean }) => p.isCurrent).lord}`
-        : null,
-    ].filter(Boolean).join('\n') || '(none)';
-
-    const panchanagaStr: string = (() => {
-      const p = (chart as any).panchanga;
-      if (!p) return '(no data)';
-      return typeof p === 'object' ? JSON.stringify(p, null, 2) : String(p);
-    })();
-
-    const lagnaLine = `Lagna (D1): ${SIGN_NAMES[chart.lagnaSign]} (${chart.lagna?.toFixed(2)}°), Ayanamsa: ${chart.ayanamsa?.toFixed(4)}°`;
-    const chartPlacementsStr = [lagnaLine, planetList, divPlanetList || null].filter(Boolean).join('\n');
-
-    const userQuestion = safeThemeDesc || '(none)';
-    const optionalProfile = safeThemeName ? `Theme: ${safeThemeName}` : '(none)';
-
-    // Paid deep-dive block, or the free-preview block when the gate didn't pass
-    const PREVIEW_BLOCK = `[Free preview — length is strict]
+  // Paid deep-dive block, or the free-preview block when the gate didn't pass
+  const PREVIEW_BLOCK = `[Free preview — length is strict]
 This is a free preview of the paid premium reading. Ignore the default response structure above and follow these rules instead:
 * Hard cap: 400 characters including spaces (Korean-character count; keep other output languages equally short). No section headings — exactly 3 short paragraphs.
 * Paragraphs 1–2: the two most striking things this chart says about the topic, 2–3 sentences each, each anchored once in the chart in plain everyday words.
 * The answers readers want most (concrete timing, the list of fitting fields, the spouse profile, weak spots, this year's strategy, and the like) must NOT be answered — only signal that the full report covers them.
 * Paragraph 3 (two sentences): preview what the full report will reveal so curiosity builds, then close with one warm word from Nanima.
 * Use the budget: aim for 350–400 characters, not far less.`;
-    const FREE_BLOCK = `[Free summary reading — write a GENEROUS, satisfying reading]
+  const FREE_BLOCK = `[Free summary reading — write a GENEROUS, satisfying reading]
 This is the free summary reading. It must feel full and substantial — a warm, complete portrait, NOT a thin teaser. Completely ignore the default response structure (items 1–9) above and write only this:
 * No section headings — exactly 5 paragraphs: (1) first impression — the single strongest recurring theme of this chart, drawn vividly; (2) core disposition — the person's real strengths and the way they naturally move through life, anchored once in the chart in plain words; (3) the pattern that repeats — a soft truth about what they crave or avoid, framed as "this is how it tends to work"; (4) the current dasha weather — what season of life they are in now and what it asks of them; (5) one small practical tip they can try today, plus a warm closing word from Nanima.
 * Each paragraph 3–4 full sentences. Use the whole budget: aim for 1,100–1,400 characters including spaces (Korean-character count; other output languages equivalent). Never fall below 1,000 characters and never exceed 1,500. Always end on a complete sentence.
 * Keep the plain-language Voice rules (no jargon chains), but do NOT clip the reading short in the name of concision — richness of insight matters more here than brevity.
 * You may include exactly one natural sentence noting that deep analysis of specific areas (career, love, health, this year, family) lives in the premium reports.`;
-    // Deep-dive themes get their bespoke block, the 15 std topics get the
-    // generic single-topic block, and free requests get the summary block.
-    const isGatedTheme = !!theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId);
-    const premiumBlock = isGatedTheme
-      ? (previewMode ? `\n${PREVIEW_BLOCK}\n` : `\n${PREMIUM_PROMPTS[theme.premiumId] ?? STD_TOPIC_BLOCK}\n`)
-      : `\n${FREE_BLOCK}\n`;
+  // Deep-dive themes get their bespoke block, the 15 std topics get the
+  // generic single-topic block, and free requests get the summary block.
+  const isGatedTheme = !!theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId);
+  const premiumBlock = isGatedTheme
+    ? (previewMode ? `\n${PREVIEW_BLOCK}\n` : `\n${PREMIUM_PROMPTS[theme.premiumId] ?? STD_TOPIC_BLOCK}\n`)
+    : `\n${FREE_BLOCK}\n`;
 
-    const prompt = `This is a custom Vedic astrology reading prompt.
+  return `This is a custom Vedic astrology reading prompt.
 
 Selected divisional charts: ${selectedDivisions}
 
@@ -588,7 +464,135 @@ ${premiumBlock}
 Everything must be derived from the chart payload above. Keep technical citations to the rare plain-language anchors allowed by the Voice rules — the reader should feel understood, not lectured.
 
 ${lang === 'ko' ? 'Write your entire response in Korean only.' : lang === 'zh' ? 'Write your entire response in Simplified Chinese (zh-CN) only.' : 'Write your entire response in English only.'}`;
+}
 
+function verifyPremiumToken(token: string): { themes: string[]; exp: number } {
+  const dotIdx = token.lastIndexOf('.');
+  if (dotIdx < 0) throw new Error('malformed');
+  const data = token.slice(0, dotIdx);
+  const sig = token.slice(dotIdx + 1);
+  const expected = crypto.createHmac('sha256', process.env.JWT_SECRET!).update(data).digest('base64url');
+  const sigBuf = Buffer.from(sig, 'base64url');
+  const expBuf = Buffer.from(expected, 'base64url');
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) throw new Error('invalid');
+  const payload = JSON.parse(Buffer.from(data, 'base64url').toString());
+  if (typeof payload.exp !== 'number' || payload.exp < Date.now()) throw new Error('expired');
+  return payload;
+}
+
+// ---------------------------------------------------------------------------
+// In-memory rate limiter — best-effort in serverless (resets per cold start).
+// Replace with Upstash/Vercel KV for cross-instance enforcement.
+// ---------------------------------------------------------------------------
+// RATE_MAX must comfortably exceed 5: the full-report mode fires 5 sequential
+// interpret calls, and fast generations can land inside one window.
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX       = 8;
+const ipMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = ipMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    ipMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_MAX) return false;
+  entry.count++;
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Sanitize user-controlled string fields before prompt interpolation.
+// These are untrusted data, not instructions.
+// ---------------------------------------------------------------------------
+function sanitize(value: unknown, maxLen = 120): string {
+  if (typeof value !== 'string') return '';
+  return value
+    .slice(0, maxLen)
+    .replace(/[\n\r`<>]/g, ' ')
+    .trim();
+}
+
+// ---------------------------------------------------------------------------
+// Map Gemini error codes to safe user-facing messages (lang-aware).
+// ---------------------------------------------------------------------------
+function safeErrorMessage(err: unknown, lang = 'ko'): { status: number; message: string } {
+  const msg = err instanceof Error ? err.message.toLowerCase() : '';
+  if (msg.includes('503') || msg.includes('overloaded') || msg.includes('unavailable'))
+    return {
+      status: 503,
+      message: lang === 'zh'
+        ? 'AI解读服务暂时繁忙，请稍后再试。'
+        : lang === 'en'
+          ? 'The AI service is temporarily overloaded. Please try again shortly.'
+          : '현재 AI 해석 서버가 일시적으로 혼잡합니다. 잠시 후 다시 시도해주세요.',
+    };
+  if (msg.includes('429') || msg.includes('quota') || msg.includes('rate'))
+    return {
+      status: 429,
+      message: lang === 'zh'
+        ? '请求过于频繁，请稍后再试。'
+        : lang === 'en'
+          ? 'Too many requests. Please try again shortly.'
+          : '요청이 일시적으로 많습니다. 잠시 후 다시 시도해주세요.',
+    };
+  return {
+    status: 500,
+    message: lang === 'zh'
+      ? '生成解读时出现问题，请稍后再试。'
+      : lang === 'en'
+        ? 'An error occurred while generating the interpretation. Please try again.'
+        : '해석 생성 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
+  };
+}
+
+export async function POST(req: NextRequest) {
+  // Rate limit check
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json(
+      { error: '요청이 일시적으로 많습니다. 잠시 후 다시 시도해주세요.' },
+      { status: 429 }
+    );
+  }
+
+  let lang = 'ko';
+  try {
+    const body = await req.json();
+    lang = body.lang ?? 'ko';
+    const { chart, birthInfo, theme, premiumToken } = body;
+
+    // Premium theme gate — without a valid token we serve a short free PREVIEW
+    // instead of the full paid reading (never the full text, so nothing to leak).
+    // An explicitly provided but expired/broken token still gets a clear error.
+    let previewMode = false;
+    if (theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId)) {
+      const tokenErr = {
+        ko: '결제 정보가 만료되었거나 유효하지 않습니다. 결제하신 이메일로 다시 잠금 해제해주세요.',
+        en: 'Payment expired or invalid. Please unlock again with your payment email.',
+        zh: '支付信息已过期或无效，请用付款邮箱重新解锁。',
+      };
+      const lk = (lang === 'zh' ? 'zh' : lang === 'en' ? 'en' : 'ko') as 'ko' | 'en' | 'zh';
+      if (!premiumToken || !process.env.JWT_SECRET) {
+        previewMode = true;
+      } else {
+        try {
+          const payload = verifyPremiumToken(premiumToken);
+          if (!Array.isArray(payload.themes) || !payload.themes.includes(theme.premiumId)) {
+            previewMode = true;
+          }
+        } catch {
+          return NextResponse.json({ error: tokenErr[lk] }, { status: 403 });
+        }
+      }
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'AI 서비스가 현재 설정되지 않았습니다. 잠시 후 다시 시도해주세요.' }, { status: 500 });
+    }
+
+    const prompt = buildReadingPrompt({ chart, birthInfo, theme, lang, previewMode });
 
     // Length is controlled by prompt instructions only; Gemini 2.5 thinking
     // tokens share this budget, so a tight cap truncates output mid-sentence.
