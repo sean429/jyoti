@@ -30,6 +30,12 @@ async function callDeepSeek(model: string, prompt: string, key: string) {
 }
 
 export async function POST(req: NextRequest) {
+  // Gate the temp endpoint behind the master code so it can't be abused to burn
+  // paid LLM calls while it lives.
+  const gate = new URL(req.url).searchParams.get('k');
+  if (!process.env.MASTER_CODE || gate !== process.env.MASTER_CODE.trim()) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 });
+  }
   const body = await req.json();
   const { chart, birthInfo, theme = null, lang = 'ko', provider = 'flash' } = body;
   const key = process.env.DeepSeek_api_key ?? process.env.DEEPSEEK_API_KEY ?? '';
