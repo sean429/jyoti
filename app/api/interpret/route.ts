@@ -547,6 +547,64 @@ function safeErrorMessage(err: unknown, lang = 'ko'): { status: number; message:
   };
 }
 
+const DEEPSEEK_KEY = process.env.DeepSeek_api_key ?? process.env.DEEPSEEK_API_KEY ?? '';
+
+function isTransient(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return m.includes('429') || m.includes('quota') || m.includes('rate') ||
+    m.includes('503') || m.includes('overloaded') || m.includes('unavailable') ||
+    m.includes('500') || m.includes('timeout');
+}
+
+// Gemini path — free readings and previews. One retry on transient throttle.
+async function generateWithGemini(prompt: string): Promise<string> {
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: { maxOutputTokens: 8192, temperature: 0.8 },
+  });
+  try {
+    return (await model.generateContent(prompt)).response.text();
+  } catch (e) {
+    if (e instanceof Error && isTransient(e.message)) {
+      await new Promise(r => setTimeout(r, 1500));
+      return (await model.generateContent(prompt)).response.text();
+    }
+    throw e;
+  }
+}
+
+// DeepSeek path — paid readings. High max_tokens so long premium chapters are
+// never cut off. One retry on transient error.
+async function callDeepSeekOnce(prompt: string): Promise<string> {
+  const res = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
+    body: JSON.stringify({
+      model: 'deepseek-v4-flash',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.8,
+      max_tokens: 8000,
+    }),
+  });
+  if (!res.ok) throw new Error(`deepseek ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content ?? '';
+  if (!text) throw new Error('deepseek empty response');
+  return text;
+}
+
+async function generateWithDeepSeek(prompt: string): Promise<string> {
+  try {
+    return await callDeepSeekOnce(prompt);
+  } catch (e) {
+    if (e instanceof Error && isTransient(e.message)) {
+      await new Promise(r => setTimeout(r, 1500));
+      return await callDeepSeekOnce(prompt);
+    }
+    throw e;
+  }
+}
+
 export async function POST(req: NextRequest) {
   // Rate limit check
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
@@ -594,28 +652,24 @@ export async function POST(req: NextRequest) {
 
     const prompt = buildReadingPrompt({ chart, birthInfo, theme, lang, previewMode });
 
-    // Length is controlled by prompt instructions only; Gemini 2.5 thinking
-    // tokens share this budget, so a tight cap truncates output mid-sentence.
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: { maxOutputTokens: 8192, temperature: 0.8 },
-    });
+    // Paid full readings run on DeepSeek (far cheaper at scale); the free
+    // general reading and the short preview stay on Gemini's free tier, which
+    // reads warmer for that summary and costs nothing on the highest-volume
+    // path. If DeepSeek fails, fall back to Gemini so a paying reader is never
+    // left with an error.
+    const isGated = !!theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId);
+    const usePaidModel = isGated && !previewMode && !!DEEPSEEK_KEY;
 
-    // One in-server retry on transient throttle/overload (429/503) so a brief
-    // free-tier hiccup becomes a slightly slower success instead of an error.
     let text: string;
-    try {
-      const result = await model.generateContent(prompt);
-      text = result.response.text();
-    } catch (e) {
-      const m = e instanceof Error ? e.message.toLowerCase() : '';
-      if (m.includes('429') || m.includes('quota') || m.includes('rate') || m.includes('503') || m.includes('overloaded') || m.includes('unavailable')) {
-        await new Promise(r => setTimeout(r, 1500));
-        const result = await model.generateContent(prompt);
-        text = result.response.text();
-      } else {
-        throw e;
+    if (usePaidModel) {
+      try {
+        text = await generateWithDeepSeek(prompt);
+      } catch (e) {
+        console.error('[interpret] deepseek failed, falling back to gemini:', e instanceof Error ? e.message : e);
+        text = await generateWithGemini(prompt);
       }
+    } else {
+      text = await generateWithGemini(prompt);
     }
 
     // Fire-and-forget usage counters for the "N read their stars today" line —
