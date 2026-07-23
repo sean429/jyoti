@@ -550,6 +550,30 @@ function safeErrorMessage(err: unknown, lang = 'ko'): { status: number; message:
 
 const DEEPSEEK_KEY = process.env.DeepSeek_api_key ?? process.env.DEEPSEEK_API_KEY ?? '';
 
+// Korean vocative: 받침 있으면 "…아", 없으면 "…야"; 한글이 아니면 "얘야".
+function koVocative(name: string): string {
+  if (!name) return '얘야,';
+  const code = name.charCodeAt(name.length - 1);
+  if (code < 0xac00 || code > 0xd7a3) return '얘야,';
+  return name + ((code - 0xac00) % 28 !== 0 ? '아,' : '야,');
+}
+
+// Preview is a pre-written teaser, not an LLM generation — instant, free, and
+// it never fails. It slots the reader's name and the chapter title into a
+// fixed template so it feels personal without a model call. Vedic chart, not 사주.
+function buildPreviewTeaser(name: string, themeName: string, lang: string): string {
+  const t = themeName || (lang === 'zh' ? '这个主题' : lang === 'en' ? 'this topic' : '이 주제');
+  if (lang === 'zh') {
+    const who = name ? `${name}，` : '朋友，';
+    return `${who}你的吠陀星盘里藏着关于「${t}」的一段独特故事。\n\n这不是泛泛而谈，而是只属于你星盘的结论——什么对你有利，机缘何时开启，又该留意什么。\n\n🔒 解锁后，即可看到用你的吠陀星盘逐一解读的完整内容。`;
+  }
+  if (lang === 'en') {
+    const who = name ? `Dear ${name},` : 'Dear friend,';
+    return `${who} your Vedic chart holds a story about "${t}" that is yours alone.\n\nThis is not vague generality — it is the conclusion only your own chart gives: what favors you, when the current switches on, and what to be careful of.\n\n🔒 Unlock to read the full story, drawn out from your own Vedic chart.`;
+  }
+  return `${koVocative(name)} 네 베딕 차트에는 「${t}」에 대한 남다른 이야기가 담겨 있단다.\n\n이건 두루뭉술한 일반론이 아니라, 오직 네 차트에서만 나오는 결론이야 — 무엇이 너에게 유리하고, 언제 그 흐름이 켜지며, 무엇을 조심해야 하는지까지 말이란다.\n\n🔒 잠금을 열면 네 베딕 차트로 하나하나 풀어낸 전체 이야기를 볼 수 있단다.`;
+}
+
 function isTransient(msg: string): boolean {
   const m = msg.toLowerCase();
   return m.includes('429') || m.includes('quota') || m.includes('rate') ||
@@ -645,6 +669,13 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: tokenErr[lk] }, { status: 403 });
         }
       }
+    }
+
+    // Preview is a pre-written teaser now — return it instantly without any
+    // model call, so a locked theme never waits on generation or costs anything.
+    if (previewMode) {
+      const teaser = buildPreviewTeaser(sanitize(birthInfo?.name, 80), sanitize(theme?.name, 60), lang);
+      return NextResponse.json({ interpretation: teaser, preview: true });
     }
 
     if (!process.env.GEMINI_API_KEY) {
