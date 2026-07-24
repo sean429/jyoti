@@ -1,33 +1,101 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChartData } from '@/lib/vedic-calculations';
+
+interface Theme { name: string; desc: string; d2: number; premiumId?: string; }
 
 interface Props {
   chart: ChartData;
   birthInfo: { name: string; date: string; time: string; place: string; };
+  theme?: Theme;
+  premiumToken?: string;
 }
 
-export default function AIInterpretation({ chart, birthInfo }: Props) {
+// Staged loading theater — real steps happen server-side in one call, but
+// walking through them builds anticipation while Gemini generates.
+const LOADING_STAGES = [
+  'Calculating planetary positions...',
+  'Mapping the house placements...',
+  'Tracing the dasha currents...',
+  'Reading the nakshatras...',
+  'Nanima is writing your reading...',
+];
+
+export default function AIInterpretation({ chart, birthInfo, theme, premiumToken }: Props) {
   const [interpretation, setInterpretation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [generated, setGenerated] = useState(false);
+  const [isPreview, setIsPreview] = useState(false);
+  const [lastThemeId, setLastThemeId] = useState<string>('');
+  const [stage, setStage] = useState(0);
+  const [shareMsg, setShareMsg] = useState('');
+
+  useEffect(() => {
+    if (!loading) return;
+    setStage(0);
+    const t = setInterval(() => setStage(s => Math.min(s + 1, LOADING_STAGES.length - 1)), 2400);
+    return () => clearInterval(t);
+  }, [loading]);
+
+  async function share() {
+    const url = `${location.origin}/en/kundali`;
+    const text = 'I got a free Vedic astrology reading on Jyoti — curious what the sky looked like when you were born?';
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Jyoti Vedic Astrology', text, url }); return; }
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      setShareMsg('Link copied!');
+      setTimeout(() => setShareMsg(''), 2500);
+    } catch {}
+  }
+
+  const themeKey = theme ? theme.name + '-' + theme.d2 : 'general';
+  // Session cache: switching themes restores past readings for the same chart
+  // instead of burning another API call.
+  const cacheKey = `jyoti_interp_en|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${themeKey}`;
+
+  useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { text, preview } = JSON.parse(cached);
+        setInterpretation(text); setIsPreview(!!preview); setGenerated(true); setLastThemeId(themeKey);
+        return;
+      }
+    } catch {}
+    if (themeKey !== lastThemeId && generated) { setGenerated(false); setInterpretation(''); }
+  }, [cacheKey]);
 
   async function generate() {
     setLoading(true);
     setError('');
     setInterpretation('');
-    try {
-      const res = await fetch('/api/interpret', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart, birthInfo, lang: 'en' }),
-      });
-      const data = await res.json();
-      if (data.error) setError(data.error);
-      else { setInterpretation(data.interpretation); setGenerated(true); }
-    } catch { setError('Connection error. Please try again.'); }
+    setLastThemeId(themeKey);
+    // Silently retry transient throttles behind the loading animation.
+    const RETRY_DELAYS = [1500, 3500];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        const res = await fetch('/api/interpret', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chart, birthInfo, lang: 'en', theme, premiumToken }),
+        });
+        const data = await res.json();
+        if (res.ok && data.interpretation) {
+          setInterpretation(data.interpretation); setIsPreview(!!data.preview); setGenerated(true);
+          try { sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.interpretation, preview: !!data.preview })); } catch {}
+          break;
+        }
+        if ((res.status === 429 || res.status >= 500) && attempt < RETRY_DELAYS.length) {
+          await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue;
+        }
+        setError(data.error ?? 'Connection error. Please try again.'); break;
+      } catch {
+        if (attempt < RETRY_DELAYS.length) { await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt])); continue; }
+        setError('Connection error. Please try again.'); break;
+      }
+    }
     setLoading(false);
   }
 
@@ -102,12 +170,31 @@ export default function AIInterpretation({ chart, birthInfo }: Props) {
         <div className="text-center py-6">
           <div className="mb-4">
             <div className="text-4xl mb-3">?</div>
-            <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Powered by Gemini AI</p>
-            <p className="text-xs" style={{ color: 'rgba(156,163,175,0.6)' }}>
-              Get a detailed personalized reading based on your Kundali
-            </p>
+            {theme ? (
+              <>
+                <p className="text-sm font-cinzel mb-1" style={{ color: 'var(--gold-light)' }}>{theme.name}</p>
+                <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>{theme.desc}</p>
+                <p className="text-xs" style={{ color: 'rgba(156,163,175,0.6)' }}>
+                  {theme.d2 > 0 ? `Combined analysis of D1 Rashi and D${theme.d2} charts` : 'Analysis based on your D1 Rashi chart'}
+                </p>
+                {!!theme.premiumId && !premiumToken && (
+                  <p className="text-xs mt-1" style={{ color: '#c4b5fd' }}>
+                    Preview the opening section free — the full report unlocks after purchase
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>Powered by AI</p>
+                <p className="text-xs" style={{ color: 'rgba(156,163,175,0.6)' }}>
+                  Get a detailed personalized reading based on your Kundali
+                </p>
+              </>
+            )}
           </div>
-          <button className="btn-gold" onClick={generate}>? Generate AI Reading ?</button>
+          <button className="btn-gold" onClick={generate}>
+            {theme?.premiumId && !premiumToken ? `? ${theme.name} Free Preview ?` : theme ? `? ${theme.name} AI Reading ?` : '? Generate AI Reading ?'}
+          </button>
         </div>
       )}
       {loading && (
@@ -121,8 +208,14 @@ export default function AIInterpretation({ chart, birthInfo }: Props) {
             </svg>
             <div className="absolute inset-0 flex items-center justify-center text-2xl">?</div>
           </div>
-          <p className="font-cinzel text-sm" style={{ color: 'var(--gold)' }}>Consulting the cosmic archives...</p>
+          <p className="font-cinzel text-sm" style={{ color: 'var(--gold)' }}>{LOADING_STAGES[stage]}</p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Analyzing planetary influences for {birthInfo.name}</p>
+          <div className="flex justify-center gap-1.5 mt-3">
+            {LOADING_STAGES.map((_, i) => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full transition-all"
+                style={{ background: i <= stage ? 'var(--gold)' : 'rgba(201,168,76,0.2)' }} />
+            ))}
+          </div>
         </div>
       )}
       {error && (
@@ -136,17 +229,48 @@ export default function AIInterpretation({ chart, birthInfo }: Props) {
         </div>
       )}
       {interpretation && (
-        <div>
+        <div className="print-report">
           <div className="mb-4 pb-3" style={{ borderBottom: '1px solid rgba(201,168,76,0.2)' }}>
-            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>AI READING FOR</p>
+            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>AI READING FOR{isPreview ? ' (FREE PREVIEW)' : ''}</p>
             <p className="font-cinzel font-bold text-lg" style={{ color: 'var(--gold-light)' }}>{birthInfo.name}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{birthInfo.date} ? {birthInfo.place}</p>
           </div>
           <div className="ai-prose">{formatInterpretation(interpretation)}</div>
-          <div className="mt-6 pt-4 flex justify-center" style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
+          {isPreview && (
+            <div className="relative mt-6 no-print" aria-hidden="true">
+              <div style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none' }}>
+                {[0, 1, 2].map(s => (
+                  <div key={s} className="mb-6">
+                    <div className="h-4 mb-3 rounded" style={{ background: 'rgba(201,168,76,0.35)', width: '38%' }} />
+                    {[0, 1, 2, 3, 4].map(i => (
+                      <div key={i} className="h-3 mb-2 rounded"
+                        style={{ background: 'rgba(240,235,224,0.16)', width: `${92 - ((s * 5 + i) * 9) % 28}%` }} />
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6"
+                style={{ background: 'linear-gradient(180deg, rgba(8,8,24,0) 0%, rgba(8,8,24,0.9) 45%)' }}>
+                <p className="font-cinzel text-sm mb-2" style={{ color: '#e9d5ff' }}>This is where the free preview ends</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)', maxWidth: '380px' }}>
+                  The full report contains 8 sections of in-depth analysis — talents, best-fit fields, timing and more.
+                  Unlock it in the Premium Deep Readings above.
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="mt-6 pt-4 flex justify-center gap-2 no-print" style={{ borderTop: '1px solid rgba(201,168,76,0.1)' }}>
             <button className="text-xs font-cinzel px-4 py-2 rounded-lg hover:opacity-80"
               style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
               onClick={generate} disabled={loading}>? Regenerate Reading</button>
+            {!isPreview && (
+              <button className="text-xs font-cinzel px-4 py-2 rounded-lg hover:opacity-80"
+                style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
+                onClick={() => window.print()}>? Save as PDF</button>
+            )}
+            <button className="text-xs font-cinzel px-4 py-2 rounded-lg hover:opacity-80"
+              style={{ color: 'var(--gold-dim)', border: '1px solid rgba(201,168,76,0.2)', background: 'transparent' }}
+              onClick={share}>{shareMsg || '🔗 Share'}</button>
           </div>
         </div>
       )}

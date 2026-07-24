@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import BirthChartFormKo, { BirthInfo } from '@/components/BirthChartFormKo';
 import KundaliChart from '@/components/KundaliChart';
 import PlanetTable from '@/components/PlanetTable';
 import DashaTable from '@/components/DashaTable';
 import AIInterpretationKo from '@/components/AIInterpretationKo';
+import PremiumFullReport from '@/components/PremiumFullReport';
+import CreditWallet from '@/components/CreditWallet';
+import LiveCounter from '@/components/LiveCounter';
+import PaymentReturnPrompt from '@/components/PaymentReturnPrompt';
+import BrowserHint from '@/components/BrowserHint';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_KO = [
@@ -43,6 +48,39 @@ const THEMES = [
 
 type Theme = typeof THEMES[number];
 
+// Premium paid themes — purchased on Groble, unlocked via /api/payment/claim (HMAC token)
+const PREMIUM_THEMES_KO = [
+  { id: 'career', name: '직업·재물운', icon: '💼', d2: 10, desc: '직업과 재물운을 D1+D10 차트 기반으로 집중 분석합니다. 직업적 재능, 성공 분야, 재물 흐름, 현재 다샤의 재물운을 구체적으로 알려주세요.' },
+  { id: 'love',   name: '연애·결혼운', icon: '💕', d2: 9,  desc: '연애와 결혼운을 D1+D9 차트 기반으로 집중 분석합니다. 인연 패턴, 배우자 기질, 관계 반복 문제, 좋은 인연이 오는 시기를 알려주세요.' },
+  { id: 'health', name: '건강운',      icon: '🌿', d2: 6,  desc: '건강운을 D1+D6 차트 기반으로 집중 분석합니다. 선천적으로 약한 부분, 주의 시기, 건강 유지를 위한 현실적인 조언을 알려주세요.' },
+  { id: 'yearly', name: '올해 운세',   icon: '🌟', d2: 0,  desc: '올해와 현재 다샤 기간의 운세를 집중 분석합니다. 이 시기의 성격, 유리한 선택, 피해야 할 것을 마하다샤와 안타르다샤 중심으로 알려주세요.' },
+  { id: 'family', name: '자녀·가족운', icon: '🏠', d2: 7,  desc: '자녀운과 가족 관계를 D1+D7 차트 기반으로 집중 분석합니다. 자녀 인연, 부모·형제 관계 패턴, 가족의 영향을 알려주세요.' },
+] as const;
+
+// Chapters of the love-focused PDF report (ids love1..love5 gate server-side)
+const LOVE_THEMES_KO = [
+  { id: 'love1', name: '미래 배우자 몽타주', icon: '💘', d2: 9, desc: '미래 배우자의 첫인상, 분위기, 스타일과 기질을 스케치합니다. 어떤 사람인지 생생하게 그려주세요.' },
+  { id: 'love2', name: '인연의 타이밍',     icon: '⏳', d2: 9, desc: '인연이 켜지는 시기와 결혼의 창을 다샤 흐름으로 읽습니다. 지금이 어떤 계절인지 알려주세요.' },
+  { id: 'love3', name: '만남의 시나리오',   icon: '🗺️', d2: 9, desc: '어디서 어떻게 만나게 되는지, 첫 만남의 장면과 경로를 그려주세요.' },
+  { id: 'love4', name: '나의 매력 설계도',  icon: '🌹', d2: 9, desc: '이성에게 작동하는 나의 매력이 무엇인지, 언제 켜지고 꺼지는지 알려주세요.' },
+  { id: 'love5', name: '악연 감별법',       icon: '🕯️', d2: 9, desc: '반복되는 악연 패턴과 조기 신호, 그리고 오래가는 사랑의 조건을 알려주세요.' },
+] as const;
+
+// Both the 5 deep-dive themes and the love-report chapters flow through the
+// same selection state.
+type PremiumTheme = { id: string; name: string; icon: string; d2: number; desc: string };
+
+// Groble product page links (set in Vercel env, inlined at build time)
+const GROBLE_URLS = {
+  single: process.env.NEXT_PUBLIC_GROBLE_SINGLE_URL ?? '',
+  trio: process.env.NEXT_PUBLIC_GROBLE_TRIO_URL ?? '',
+  all: process.env.NEXT_PUBLIC_GROBLE_ALL_URL ?? '',
+  stdSingle: process.env.NEXT_PUBLIC_GROBLE_STD_SINGLE_URL ?? '',
+  stdFive: process.env.NEXT_PUBLIC_GROBLE_STD_FIVE_URL ?? '',
+  stdAll: process.env.NEXT_PUBLIC_GROBLE_STD_ALL_URL ?? '',
+  love: process.env.NEXT_PUBLIC_GROBLE_LOVE_URL ?? '',
+};
+
 export default function KoKundaliPage() {
   const [chart, setChart] = useState<ChartData | null>(null);
   const [birthInfo, setBirthInfo] = useState<BirthInfo | null>(null);
@@ -50,6 +88,140 @@ export default function KoKundaliPage() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'chart'|'planets'|'dasha'|'ai'>('chart');
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
+  const [premiumToken, setPremiumToken] = useState('');
+  const [unlockedThemes, setUnlockedThemes] = useState<string[]>([]);
+  const [credits, setCredits] = useState<{ std: number; prem: number }>({ std: 0, prem: 0 });
+  const [claimCode, setClaimCode] = useState('');
+  const [activePremium, setActivePremium] = useState<PremiumTheme | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [justUnlocked, setJustUnlocked] = useState(false);
+  const [fullReport, setFullReport] = useState(false);
+  const [loveReport, setLoveReport] = useState(false);
+  const [myRef, setMyRef] = useState('');
+  const [refNotice, setRefNotice] = useState('');
+  const [refCopied, setRefCopied] = useState(false);
+  const [refInput, setRefInput] = useState('');
+
+  // Restore premium token from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('jyoti_premium_token');
+    const savedThemes = localStorage.getItem('jyoti_premium_themes');
+    const savedExp = Number(localStorage.getItem('jyoti_premium_exp') ?? 0);
+    if (saved && savedExp > Date.now()) {
+      setPremiumToken(saved);
+      setUnlockedThemes((savedThemes ?? '').split(',').filter(Boolean));
+      try { setCredits(JSON.parse(localStorage.getItem('jyoti_premium_credits') ?? '')); } catch {}
+    } else if (saved) {
+      localStorage.removeItem('jyoti_premium_token');
+      localStorage.removeItem('jyoti_premium_themes');
+      localStorage.removeItem('jyoti_premium_credits');
+      localStorage.removeItem('jyoti_premium_exp');
+    }
+  }, []);
+
+  // A friend's referral code arrives as ?ref=XXXXXX and is kept until the
+  // visitor claims a purchase, which is the moment it pays out.
+  useEffect(() => {
+    try {
+      const r = new URLSearchParams(location.search).get('ref');
+      if (r) localStorage.setItem('jyoti_ref', r);
+      const mine = localStorage.getItem('jyoti_my_ref');
+      if (mine) setMyRef(mine);
+    } catch {}
+  }, []);
+
+  const REF_NOTICE: Record<string, string> = {
+    applied: '🎁 친구 추천이 확인되어 일반 이용권 1장이 추가됐어요',
+    invalid: '추천 코드를 찾지 못해 결제분만 열었어요',
+    used: '추천 코드는 한 번만 사용할 수 있어요',
+    self: '본인 추천 코드는 사용할 수 없어요',
+  };
+
+  // Shares the invite link, falling back to the clipboard where Web Share
+  // is unavailable. Used by both the wallet and the referral card.
+  function shareRef() {
+    const url = `${location.origin}${location.pathname}?ref=${myRef}`;
+    const text = `나니마의 베딕 점성술 — 추천 코드 ${myRef} 로 열면 이용권 1장을 받아요\n${url}`;
+    if (navigator.share) { void navigator.share({ text }).catch(() => {}); return; }
+    void navigator.clipboard.writeText(text).then(() => {
+      setRefCopied(true);
+      setTimeout(() => setRefCopied(false), 2500);
+    }).catch(() => {});
+  }
+
+  // Persists a token grant (from claim or use-credit) to state + localStorage.
+  function saveGrant(data: {
+    token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number;
+    ref?: string; referral?: string | null;
+  }) {
+    const c = { std: data.credits?.std ?? 0, prem: data.credits?.prem ?? 0 };
+    localStorage.setItem('jyoti_premium_token', data.token);
+    localStorage.setItem('jyoti_premium_themes', data.themes.join(','));
+    localStorage.setItem('jyoti_premium_credits', JSON.stringify(c));
+    localStorage.setItem('jyoti_premium_exp', String(data.exp));
+    setPremiumToken(data.token);
+    setUnlockedThemes(data.themes);
+    setCredits(c);
+    setJustUnlocked(true);
+    if (data.ref) {
+      setMyRef(data.ref);
+      try { localStorage.setItem('jyoti_my_ref', data.ref); } catch {}
+    }
+    if (data.referral) {
+      setRefNotice(REF_NOTICE[data.referral] ?? '');
+      if (data.referral !== 'invalid') { try { localStorage.removeItem('jyoti_ref'); } catch {} }
+    }
+    if (PREMIUM_THEMES_KO.every(t => data.themes.includes(t.id))) setFullReport(true);
+    else if (LOVE_THEMES_KO.every(t => data.themes.includes(t.id))) setLoveReport(true);
+  }
+
+  // After paying on Groble, the buyer enters their order number or email here;
+  // the server matches it against webhook-recorded purchases and issues a token.
+  async function handleClaim() {
+    const code = claimCode.trim();
+    if (!code) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/payment/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, lang: 'ko', ref: refInput.trim() || localStorage.getItem('jyoti_ref') || '' }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        saveGrant(data);
+        setClaimCode('');
+      } else setPaymentError(data.error ?? '결제 내역을 찾지 못했습니다.');
+    } catch { setPaymentError('확인에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
+    setPaymentLoading(false);
+  }
+
+  // Stamped when a buy button opens Groble, so the return-prompt greets the
+  // buyer when they come back to this page after paying.
+  function markPendingBuy() {
+    try { localStorage.setItem('jyoti_pending_buy', String(Date.now())); } catch {}
+  }
+
+  // Spends one credit to permanently unlock the given theme id (stdN or premium).
+  async function handleUseCredit(themeId: string) {
+    if (!premiumToken) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/payment/use-credit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: premiumToken, theme: themeId, lang: 'ko' }),
+      });
+      const data = await res.json();
+      if (data.token) saveGrant(data);
+      else setPaymentError(data.error ?? '이용권 사용에 실패했습니다.');
+    } catch { setPaymentError('이용권 사용에 실패했습니다. 잠시 후 다시 시도해주세요.'); }
+    setPaymentLoading(false);
+  }
 
   async function handleSubmit(info: BirthInfo) {
     setLoading(true);
@@ -77,6 +249,10 @@ export default function KoKundaliPage() {
   const moonPlanet = chart?.planets.find(p => p.id === 'moon');
   const sunPlanet  = chart?.planets.find(p => p.id === 'sun');
 
+  const premiumAllUnlocked = PREMIUM_THEMES_KO.every(t => unlockedThemes.includes(t.id));
+  const stdAllUnlocked = THEMES.every(t => unlockedThemes.includes('std' + t.id));
+  const loveAllUnlocked = LOVE_THEMES_KO.every(t => unlockedThemes.includes(t.id));
+
   const COLORS: Record<string,string> = {
     sun:'#f59e0b', moon:'#c0c0c0', mars:'#ef4444', mercury:'#10b981',
     jupiter:'#fbbf24', venus:'#ec4899', saturn:'#a78bfa', rahu:'#94a3b8', ketu:'#9ca3af',
@@ -85,6 +261,10 @@ export default function KoKundaliPage() {
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="stars-bg" />
+      <CreditWallet lang="ko" credits={credits} unlockedCount={unlockedThemes.length}
+        refCode={myRef} onShare={myRef ? shareRef : undefined} />
+      <PaymentReturnPrompt lang="ko" onUnlocked={saveGrant} />
+      <BrowserHint lang="ko" />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }}
           className="sticky top-0 z-50">
@@ -359,39 +539,355 @@ export default function KoKundaliPage() {
                       </div>
                     )}
 
-                    {activeTab === 'ai' && (
+                    {activeTab === 'ai' && (() => {
+                      const question = customQuestion.trim();
+                      const aiTheme = activePremium
+                        ? { name: activePremium.name, desc: activePremium.desc + (question ? ' 추가 질문: ' + question : ''), d2: activePremium.d2, premiumId: activePremium.id }
+                        : selectedTheme
+                          ? { name: selectedTheme.name, desc: selectedTheme.desc + (question ? ' 추가 질문: ' + question : ''), d2: selectedTheme.d2, premiumId: 'std' + selectedTheme.id }
+                          : question
+                            ? { name: '나의 질문', desc: question, d2: 0, premiumId: 'question' }
+                            : undefined;
+                      const questionUnlocked = unlockedThemes.includes('question');
+                      return (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-4">
                           <span className="ornament">AI 운세 해석 보기</span>
                         </h3>
+                        <LiveCounter lang="ko" />
                         {/* Theme picker for AI */}
+                        {!fullReport && !loveReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
-                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>해석 주제 선택 (특정 영역 AI 운세 보기)</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            <button
-                              onClick={() => setSelectedTheme(null)}
-                              className="px-2 py-1 rounded text-xs font-cinzel transition-all"
-                              style={{
-                                background: !selectedTheme ? 'rgba(201,168,76,0.2)' : 'transparent',
-                                border: '1px solid rgba(201,168,76,0.2)',
-                                color: !selectedTheme ? 'var(--gold-light)' : 'var(--text-muted)',
-                              }}>
-                              종합 운세
-                            </button>
-                            {THEMES.map(t => (
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>해석 주제 선택 — 종합 운세는 무료</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>심층 테마 단품 ₩2,000 · 5개 ₩5,000 · 15개 ₩12,900</p>
+                          </div>
+                          <button
+                            onClick={() => { setSelectedTheme(null); setActivePremium(null); }}
+                            className="w-full px-2 py-1.5 mb-2 rounded text-xs font-cinzel transition-all"
+                            style={{
+                              background: !selectedTheme && !activePremium ? 'rgba(201,168,76,0.2)' : 'transparent',
+                              border: '1px solid rgba(201,168,76,0.2)',
+                              color: !selectedTheme && !activePremium ? 'var(--gold-light)' : 'var(--text-muted)',
+                            }}>
+                            ✦ 종합 운세 (무료)
+                          </button>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                            {THEMES.map(t => {
+                              const unlocked = unlockedThemes.includes('std' + t.id);
+                              return (
                               <button key={t.id}
-                                onClick={() => setSelectedTheme(t)}
-                                className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                onClick={() => { setSelectedTheme(t); setActivePremium(null); }}
+                                className="px-1 py-1.5 rounded text-[11px] font-cinzel transition-all text-center leading-tight"
                                 style={{
                                   background: selectedTheme?.id === t.id ? 'rgba(201,168,76,0.2)' : 'transparent',
                                   border: '1px solid rgba(201,168,76,0.2)',
-                                  color: selectedTheme?.id === t.id ? 'var(--gold-light)' : 'var(--text-muted)',
+                                  color: selectedTheme?.id === t.id || unlocked ? 'var(--gold-light)' : 'var(--text-muted)',
                                 }}>
-                                {t.name}
+                                {t.name} {unlocked ? '🔓' : '🔒'}
                               </button>
-                            ))}
+                              );
+                            })}
+                          </div>
+                          {selectedTheme && !unlockedThemes.includes('std' + selectedTheme.id) && credits.std > 0 && (
+                            <button onClick={() => handleUseCredit('std' + selectedTheme.id)} disabled={paymentLoading}
+                              className="btn-buy mt-3" style={{ display: 'inline-flex' }}>
+                              {paymentLoading ? '여는 중...' : `🎟 이용권으로 '${selectedTheme.name}' 열기 · 남은 이용권 ${credits.std}장`}
+                            </button>
+                          )}
+                          {!stdAllUnlocked && (
+                            <div className="mt-3">
+                              <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                                잠긴 테마는 무료 미리보기로 맛볼 수 있어요 — 구매 후 결제하신 전화번호를 입력하면 이용권이 충전되고, 원하는 테마를 골라 열 수 있어요
+                              </p>
+                              <div className="flex flex-col items-center gap-2">
+                                {GROBLE_URLS.stdSingle && (
+                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 이용권 1장 ₩2,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.stdFive && (
+                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 이용권 5장 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩10,000</s> ₩5,000 · 50%↓
+                                  </a>
+                                )}
+                                {GROBLE_URLS.stdAll && (
+                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    💳 15개 전부 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩30,000</s> ₩12,900 · 57%↓
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        )}
+
+                        {/* Love-focused PDF report */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(190,24,93,0.08)', border: '1px solid rgba(244,114,182,0.3)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#f9a8d4' }}>💘 연애 집중 리포트</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>5챕터 PDF 한 권 · ₩11,900</p>
+                          </div>
+                          {!fullReport && !loveReport && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {LOVE_THEMES_KO.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setActivePremium(active ? null : t);
+                                    setSelectedTheme(null);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(244,114,182,0.22)' : 'transparent',
+                                    border: active ? '1px solid rgba(244,114,182,0.55)' : '1px solid rgba(244,114,182,0.3)',
+                                    color: active || unlocked ? '#f9a8d4' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          )}
+                          {loveAllUnlocked ? (
+                            <button onClick={() => { setLoveReport(!loveReport); setFullReport(false); }}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: loveReport ? 'rgba(201,168,76,0.25)' : 'rgba(244,114,182,0.2)', border: '1px solid rgba(244,114,182,0.5)', color: '#fbcfe8' }}>
+                              {loveReport ? '↩ 개별 테마 보기' : '💘 연애 집중 리포트 (PDF 한 권)'}
+                            </button>
+                          ) : (
+                            <div className="mb-1">
+                              {GROBLE_URLS.love && (
+                                <div className="mb-2 flex justify-center">
+                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    💘 연애 집중 리포트 PDF <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,900</s> ₩11,900 · 40%↓
+                                  </a>
+                                </div>
+                              )}
+                              <p className="text-[10px] mb-1" style={{ color: 'rgba(249,168,212,0.75)' }}>
+                                미래 배우자의 인상·분위기 몽타주, 인연이 오는 시기, 만나는 장소와 첫 만남 시나리오, 나의 매력 설계도, 악연 감별까지 — 표지와 차례를 갖춘 PDF 한 권으로 드려요
+                              </p>
+                              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                잠긴 챕터를 누르면 무료 미리보기를 볼 수 있어요 · 결제 후 아래 입력칸에 결제하신 전화번호를 넣으면 열립니다
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Premium themes */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 프리미엄 심층 해석</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>단품 ₩3,900 · 전체 ₩14,900</p>
+                          </div>
+                          {!fullReport && !loveReport && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {PREMIUM_THEMES_KO.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setActivePremium(active ? null : t);
+                                    setSelectedTheme(null);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(167,139,250,0.25)' : 'transparent',
+                                    border: active ? '1px solid rgba(167,139,250,0.5)' : '1px solid rgba(167,139,250,0.25)',
+                                    color: active || unlocked ? '#c4b5fd' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          )}
+                          {activePremium && PREMIUM_THEMES_KO.some(p => p.id === activePremium.id) && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
+                            <button onClick={() => handleUseCredit(activePremium.id)} disabled={paymentLoading}
+                              className="btn-buy mb-2" style={{ display: 'inline-flex' }}>
+                              {paymentLoading ? '여는 중...' : `🎟 이용권으로 '${activePremium.name}' 열기 · 남은 프리미엄 이용권 ${credits.prem}장`}
+                            </button>
+                          )}
+                          {premiumAllUnlocked && (
+                            <button onClick={() => { setFullReport(!fullReport); setLoveReport(false); }}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
+                              {fullReport ? '↩ 개별 테마 보기' : '📕 5개 테마 통합 보고서 (PDF 한 권)'}
+                            </button>
+                          )}
+                          {!premiumAllUnlocked && (
+                            <div className="mb-2">
+                              <div className="flex flex-col items-center gap-2 mb-2">
+                                {GROBLE_URLS.single && (
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 프리미엄 이용권 1장 ₩3,900
+                                  </a>
+                                )}
+                                {GROBLE_URLS.trio && (
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 프리미엄 이용권 3장 ₩10,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.all && (
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🏆 📕 통합 PDF 보고서 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900
+                                  </a>
+                                )}
+                              </div>
+                              <p className="text-[10px] mb-1 text-center" style={{ color: 'rgba(230,193,90,0.75)' }}>
+                                📕 통합 PDF 보고서: 5개 테마를 한 번에 해석해 표지·챕터가 갖춰진 PDF 한 권으로 저장할 수 있어요
+                              </p>
+                            </div>
+                          )}
+                          {unlockedThemes.length > 0 && (
+                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
+                              🔓 표시된 테마는 결제 완료 — 눌러서 해석을 확인하세요 (열람 24시간, 이후 같은 번호로 다시 열 수 있어요)
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Payment confirmation — its own card so buyers can always find it */}
+                        {!(premiumAllUnlocked && stdAllUnlocked && loveAllUnlocked) && (
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(134,239,172,0.25)' }}>
+                          <p className="text-xs font-cinzel mb-1" style={{ color: '#86efac' }}>🔓 결제 확인 — 구매한 것 열기</p>
+                          <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                            결제를 마치셨다면 결제에 사용한 전화번호를 입력하세요 — 이용권과 리포트가 바로 열립니다
+                          </p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            <input
+                              value={claimCode}
+                              onChange={e => setClaimCode(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
+                              placeholder="결제하신 전화번호 (또는 이메일·주문번호)"
+                              className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(134,239,172,0.3)', color: 'var(--text)' }}
+                            />
+                            <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
+                              className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                              style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(134,239,172,0.4)', color: '#86efac' }}>
+                              {paymentLoading ? '확인 중...' : '🔓 열기'}
+                            </button>
+                          </div>
+                          <input
+                            value={refInput}
+                            onChange={e => setRefInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
+                            placeholder="친구 추천 코드 (선택) — 입력하면 이용권 1장 추가"
+                            className="w-full mt-1.5 px-3 py-1.5 rounded-lg text-xs"
+                            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(134,239,172,0.2)', color: 'var(--text)' }}
+                          />
+                          {paymentError && (
+                            <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{paymentError}</p>
+                          )}
+                          {refNotice && (
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>{refNotice}</p>
+                          )}
+                          {justUnlocked && unlockedThemes.length > 0 && (
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 결제 확인 완료! 잠금이 풀린 항목을 눌러 확인하세요</p>
+                          )}
+                          <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
+                            디지털 콘텐츠 특성상 열람 후에는 환불이 제한됩니다 · <Link href="/ko/refund" style={{ textDecoration: 'underline' }}>취소·환불 안내</Link>
+                          </p>
+                        </div>
+                        )}
+
+                        {/* Referral — shown once the buyer has a record of their own to share */}
+                        {myRef && (
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.25)' }}>
+                          <p className="text-xs font-cinzel mb-1" style={{ color: 'var(--gold-light)' }}>🎁 친구를 초대하고 이용권 받기</p>
+                          <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                            친구가 아래 코드로 결제를 열면 두 분 모두 일반 이용권을 1장씩 받아요 — 쌓인 이용권은 다음에 같은 번호로 열 때 보입니다
+                          </p>
+                          <div className="flex gap-1.5 flex-wrap items-center">
+                            <span className="px-3 py-1.5 rounded-lg text-sm font-cinzel font-bold tracking-widest"
+                              style={{ background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.35)', color: 'var(--gold-light)' }}>
+                              {myRef}
+                            </span>
+                            <button
+                              onClick={shareRef}
+                              className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                              style={{ background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.4)', color: 'var(--gold-light)' }}>
+                              {refCopied ? '복사됐어요' : '📤 초대 링크 공유'}
+                            </button>
                           </div>
                         </div>
+                        )}
+
+                        {/* Custom question — paid feature, opened with one prem credit */}
+                        {!fullReport && !loveReport && (
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>나니마에게 직접 묻기 {questionUnlocked ? '🔓' : '🔒'}</p>
+                            {!questionUnlocked && <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>프리미엄 이용권 1장으로 영구 해금</p>}
+                          </div>
+                          {questionUnlocked ? (
+                            <>
+                              <textarea
+                                value={customQuestion}
+                                onChange={e => setCustomQuestion(e.target.value)}
+                                maxLength={500}
+                                rows={3}
+                                placeholder={'질문은 구체적일수록 답이 정확해져요. 여러 개면 번호를 매겨주세요 — 예:\n1. 내년에 이직해도 괜찮을까요?\n2. 지금 하는 공부를 계속하는 게 맞을까요?'}
+                                className="w-full p-3 rounded-lg text-sm resize-none"
+                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
+                              />
+                              <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                                💡 최대한 구체적으로, 여러 질문은 번호를 매겨 적으면 나니마가 하나씩 짚어 답해줘요
+                              </p>
+                            </>
+                          ) : (
+                            <div className="p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px dashed rgba(201,168,76,0.3)' }}>
+                              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                                궁금한 것을 번호를 매겨 구체적으로 물어보면 나니마가 차트를 근거로 하나씩 답해줘요. 프리미엄 이용권 1장(₩3,900)으로 질문 기능이 영구 해금됩니다.
+                              </p>
+                              <div className="flex flex-wrap gap-2 items-center">
+                                {credits.prem > 0 && (
+                                  <button onClick={() => handleUseCredit('question')} disabled={paymentLoading} className="btn-buy">
+                                    {paymentLoading ? '여는 중...' : `🎟 이용권으로 질문 열기 · 남은 ${credits.prem}장`}
+                                  </button>
+                                )}
+                                {GROBLE_URLS.single && (
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
+                                    💳 프리미엄 이용권 ₩3,900
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        )}
+
+                        {loveReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{
+                              name: birthInfo.name,
+                              date: `${birthInfo.year}년 ${birthInfo.month}월 ${birthInfo.day}일`,
+                              time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
+                              place: birthInfo.place,
+                            }}
+                            themes={LOVE_THEMES_KO}
+                            premiumToken={premiumToken}
+                            lang='ko'
+                            title='AI 베딕 연애 집중 리포트'
+                          />
+                        ) : fullReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{
+                              name: birthInfo.name,
+                              date: `${birthInfo.year}년 ${birthInfo.month}월 ${birthInfo.day}일`,
+                              time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
+                              place: birthInfo.place,
+                            }}
+                            themes={PREMIUM_THEMES_KO}
+                            premiumToken={premiumToken}
+                            lang='ko'
+                          />
+                        ) : (
                         <AIInterpretationKo
                           chart={chart}
                           birthInfo={{
@@ -400,14 +896,13 @@ export default function KoKundaliPage() {
                             time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
                             place: birthInfo.place,
                           }}
-                          theme={selectedTheme ? {
-                            name: selectedTheme.name,
-                            desc: selectedTheme.desc,
-                            d2: selectedTheme.d2,
-                          } : undefined}
+                          theme={aiTheme}
+                          premiumToken={premiumToken || undefined}
                         />
+                        )}
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -420,6 +915,11 @@ export default function KoKundaliPage() {
             <p className="text-xs" style={{ color: 'rgba(156,163,175,0.4)' }}>
               Jyoti · 베딕 점성술을 통한 별빛의 언어 · 이 해석은 영적인 탐색을 위한 것입니다
             </p>
+            <div className="flex items-center justify-center gap-4 mt-3 flex-wrap">
+              <Link href="/ko/privacy" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>개인정보처리방침</Link>
+              <Link href="/ko/refund" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>취소·환불 안내</Link>
+              <Link href="/ko/disclaimer" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>이용 안내·면책</Link>
+            </div>
           </div>
         </footer>
       </div>

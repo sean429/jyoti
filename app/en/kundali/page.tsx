@@ -1,12 +1,17 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import BirthChartForm, { BirthInfo } from '@/components/BirthChartForm';
 import KundaliChart from '@/components/KundaliChart';
 import PlanetTable from '@/components/PlanetTable';
 import DashaTable from '@/components/DashaTable';
 import AIInterpretation from '@/components/AIInterpretation';
+import PremiumFullReport from '@/components/PremiumFullReport';
+import CreditWallet from '@/components/CreditWallet';
+import LiveCounter from '@/components/LiveCounter';
+import PaymentReturnPrompt from '@/components/PaymentReturnPrompt';
+import BrowserHint from '@/components/BrowserHint';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES = [
@@ -15,12 +20,131 @@ const SIGN_NAMES = [
 ];
 const SIGN_SYMBOLS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
 
+// Premium paid themes — purchased on Groble, unlocked via /api/payment/claim (HMAC token)
+const PREMIUM_THEMES_EN = [
+  { id: 'career', name: 'Career & Wealth', icon: '💼', d2: 10, desc: 'Deep-dive into career and wealth. Based on D1+D10, reveal my professional talents, success areas, wealth patterns, and money flow in my current dasha.' },
+  { id: 'love',   name: 'Love & Marriage', icon: '💕', d2: 9,  desc: 'Deep-dive into love and marriage. Based on D1+D9, reveal my relationship patterns, partner qualities, recurring issues, and timing for good connections.' },
+  { id: 'health', name: 'Health',          icon: '🌿', d2: 6,  desc: 'Deep-dive into health. Based on D1+D6, reveal my constitutional weaknesses, vulnerable periods, and practical advice for staying well.' },
+  { id: 'yearly', name: "This Year's Fortune", icon: '🌟', d2: 0, desc: 'Focus on this year and my current dasha period. Centered on Mahadasha and Antardasha, what is the nature of this time, what choices are favored, what should I avoid?' },
+  { id: 'family', name: 'Children & Family', icon: '🏠', d2: 7, desc: 'Deep-dive into children and family. Based on D1+D7, reveal child connections, relationship patterns with parents and siblings, and family influences.' },
+] as const;
+
+// Chapters of the love-focused PDF report (ids love1..love5 gate server-side)
+const LOVE_THEMES_EN = [
+  { id: 'love1', name: 'Future Spouse Portrait', icon: '💘', d2: 9, desc: 'Sketch the first impression, vibe, style and temperament of my future spouse — paint them vividly.' },
+  { id: 'love2', name: 'The Timing of Love',     icon: '⏳', d2: 9, desc: 'Read when love switches on and the marriage window from the dasha flow — what season am I in now?' },
+  { id: 'love3', name: 'The Meeting Scenario',   icon: '🗺️', d2: 9, desc: 'Where and how do we meet? Paint the scene and route of the first meeting.' },
+  { id: 'love4', name: 'Your Charm Blueprint',   icon: '🌹', d2: 9, desc: 'What is my charm that works on others, when does it switch on and off?' },
+  { id: 'love5', name: 'Spotting Bad Bonds',     icon: '🕯️', d2: 9, desc: 'My repeating bad-bond pattern, its early signals, and what makes love last.' },
+] as const;
+
+// Both the 5 deep-dive themes and the love-report chapters flow through the
+// same selection state.
+type PremiumTheme = { id: string; name: string; icon: string; d2: number; desc: string };
+
+// Groble product page links (set in Vercel env, inlined at build time)
+const GROBLE_URLS = {
+  single: process.env.NEXT_PUBLIC_GROBLE_SINGLE_URL ?? '',
+  trio: process.env.NEXT_PUBLIC_GROBLE_TRIO_URL ?? '',
+  all: process.env.NEXT_PUBLIC_GROBLE_ALL_URL ?? '',
+  love: process.env.NEXT_PUBLIC_GROBLE_LOVE_URL ?? '',
+};
+
 export default function EnKundaliPage() {
   const [chart, setChart] = useState<ChartData | null>(null);
   const [birthInfo, setBirthInfo] = useState<BirthInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'chart'|'planets'|'dasha'|'ai'>('chart');
+  const [premiumToken, setPremiumToken] = useState('');
+  const [unlockedThemes, setUnlockedThemes] = useState<string[]>([]);
+  const [credits, setCredits] = useState<{ std: number; prem: number }>({ std: 0, prem: 0 });
+  const [claimCode, setClaimCode] = useState('');
+  const [activePremium, setActivePremium] = useState<PremiumTheme | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [justUnlocked, setJustUnlocked] = useState(false);
+  const [fullReport, setFullReport] = useState(false);
+  const [loveReport, setLoveReport] = useState(false);
+
+  // Restore premium token from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('jyoti_premium_token');
+    const savedThemes = localStorage.getItem('jyoti_premium_themes');
+    const savedExp = Number(localStorage.getItem('jyoti_premium_exp') ?? 0);
+    if (saved && savedExp > Date.now()) {
+      setPremiumToken(saved);
+      setUnlockedThemes((savedThemes ?? '').split(',').filter(Boolean));
+      try { setCredits(JSON.parse(localStorage.getItem('jyoti_premium_credits') ?? '')); } catch {}
+    } else if (saved) {
+      localStorage.removeItem('jyoti_premium_token');
+      localStorage.removeItem('jyoti_premium_themes');
+      localStorage.removeItem('jyoti_premium_credits');
+      localStorage.removeItem('jyoti_premium_exp');
+    }
+  }, []);
+
+  // Persists a token grant (from claim or use-credit) to state + localStorage.
+  function saveGrant(data: { token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number }) {
+    const c = { std: data.credits?.std ?? 0, prem: data.credits?.prem ?? 0 };
+    localStorage.setItem('jyoti_premium_token', data.token);
+    localStorage.setItem('jyoti_premium_themes', data.themes.join(','));
+    localStorage.setItem('jyoti_premium_credits', JSON.stringify(c));
+    localStorage.setItem('jyoti_premium_exp', String(data.exp));
+    setPremiumToken(data.token);
+    setUnlockedThemes(data.themes);
+    setCredits(c);
+    setJustUnlocked(true);
+    if (PREMIUM_THEMES_EN.every(t => data.themes.includes(t.id))) setFullReport(true);
+    else if (LOVE_THEMES_EN.every(t => data.themes.includes(t.id))) setLoveReport(true);
+  }
+
+  // After paying on Groble, the buyer enters their order number or email here;
+  // the server matches it against webhook-recorded purchases and issues a token.
+  async function handleClaim() {
+    const code = claimCode.trim();
+    if (!code) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/payment/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, lang: 'en' }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        saveGrant(data);
+        setClaimCode('');
+      } else setPaymentError(data.error ?? 'No payment found.');
+    } catch { setPaymentError('Verification failed. Please try again.'); }
+    setPaymentLoading(false);
+  }
+
+  // Stamped when a buy button opens Groble, so the return-prompt greets the
+  // buyer when they come back to this page after paying.
+  function markPendingBuy() {
+    try { localStorage.setItem('jyoti_pending_buy', String(Date.now())); } catch {}
+  }
+
+  // Spends one credit to permanently unlock the given premium theme.
+  async function handleUseCredit(themeId: string) {
+    if (!premiumToken) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/payment/use-credit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: premiumToken, theme: themeId, lang: 'en' }),
+      });
+      const data = await res.json();
+      if (data.token) saveGrant(data);
+      else setPaymentError(data.error ?? 'Could not use the credit.');
+    } catch { setPaymentError('Could not use the credit. Please try again.'); }
+    setPaymentLoading(false);
+  }
 
   async function handleSubmit(info: BirthInfo) {
     setLoading(true); setError(''); setChart(null); setBirthInfo(info);
@@ -33,12 +157,18 @@ export default function EnKundaliPage() {
     setLoading(false);
   }
 
+  const premiumAllUnlocked = PREMIUM_THEMES_EN.every(t => unlockedThemes.includes(t.id));
+  const loveAllUnlocked = LOVE_THEMES_EN.every(t => unlockedThemes.includes(t.id));
+
   const moonPlanet = chart?.planets.find(p => p.id === 'moon');
   const sunPlanet = chart?.planets.find(p => p.id === 'sun');
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="stars-bg" />
+      <CreditWallet lang="en" credits={credits} unlockedCount={unlockedThemes.length} />
+      <PaymentReturnPrompt lang="en" onUnlocked={saveGrant} />
+      <BrowserHint lang="en" />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }} className="sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -163,12 +293,247 @@ export default function EnKundaliPage() {
                     )}
                     {activeTab === 'planets' && <div><h3 className="font-cinzel font-bold text-sm text-gold mb-5"><span className="ornament">Planetary Positions</span></h3><PlanetTable chart={chart} /></div>}
                     {activeTab === 'dasha' && <div><h3 className="font-cinzel font-bold text-sm text-gold mb-5"><span className="ornament">Vimshottari Dasha</span></h3><DashaTable dashas={chart.dashas} /></div>}
-                    {activeTab === 'ai' && (
+                    {activeTab === 'ai' && (() => {
+                      const question = customQuestion.trim();
+                      const aiTheme = activePremium
+                        ? { name: activePremium.name, desc: activePremium.desc + (question ? ' Additional question: ' + question : ''), d2: activePremium.d2, premiumId: activePremium.id }
+                        : question
+                          ? { name: 'My Question', desc: question, d2: 0, premiumId: 'question' }
+                          : undefined;
+                      const questionUnlocked = unlockedThemes.includes('question');
+                      return (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-5"><span className="ornament">AI Vedic Reading</span></h3>
-                        <AIInterpretation chart={chart} birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }} />
+                        <LiveCounter lang="en" />
+
+                        {/* Love-focused PDF report */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(190,24,93,0.08)', border: '1px solid rgba(244,114,182,0.3)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#f9a8d4' }}>💘 Love Report</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>5-chapter PDF · ₩11,900</p>
+                          </div>
+                          {!fullReport && !loveReport && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {LOVE_THEMES_EN.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setActivePremium(active ? null : t);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(244,114,182,0.22)' : 'transparent',
+                                    border: active ? '1px solid rgba(244,114,182,0.55)' : '1px solid rgba(244,114,182,0.3)',
+                                    color: active || unlocked ? '#f9a8d4' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          )}
+                          {loveAllUnlocked ? (
+                            <button onClick={() => { setLoveReport(!loveReport); setFullReport(false); }}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: loveReport ? 'rgba(201,168,76,0.25)' : 'rgba(244,114,182,0.2)', border: '1px solid rgba(244,114,182,0.5)', color: '#fbcfe8' }}>
+                              {loveReport ? '↩ View single themes' : '💘 Love Report (one PDF)'}
+                            </button>
+                          ) : (
+                            <div className="mb-1">
+                              {GROBLE_URLS.love && (
+                                <div className="mb-2 flex justify-center">
+                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    💘 Love Report PDF <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,900</s> ₩11,900 · 40% off
+                                  </a>
+                                </div>
+                              )}
+                              <p className="text-[10px] mb-1" style={{ color: 'rgba(249,168,212,0.75)' }}>
+                                A portrait of your future spouse, when love arrives, where and how you meet, your charm blueprint, and spotting bad bonds — one PDF with cover and contents
+                              </p>
+                              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                Tap a locked chapter for a free preview · after paying, enter your payment phone number below to unlock
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Premium themes */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 Premium Deep Readings</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>₩3,900 each · all 5 for ₩14,900</p>
+                          </div>
+                          {!fullReport && !loveReport && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {PREMIUM_THEMES_EN.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setActivePremium(active ? null : t);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(167,139,250,0.25)' : 'transparent',
+                                    border: active ? '1px solid rgba(167,139,250,0.5)' : '1px solid rgba(167,139,250,0.25)',
+                                    color: active || unlocked ? '#c4b5fd' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          )}
+                          {activePremium && PREMIUM_THEMES_EN.some(p => p.id === activePremium.id) && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
+                            <button onClick={() => handleUseCredit(activePremium.id)} disabled={paymentLoading}
+                              className="btn-buy mb-2" style={{ display: 'inline-flex' }}>
+                              {paymentLoading ? 'Unlocking...' : `🎟 Unlock '${activePremium.name}' with a credit · ${credits.prem} left`}
+                            </button>
+                          )}
+                          {premiumAllUnlocked && (
+                            <button onClick={() => { setFullReport(!fullReport); setLoveReport(false); }}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
+                              {fullReport ? '↩ View single themes' : '📕 Full 5-Theme Report (one PDF)'}
+                            </button>
+                          )}
+                          {!premiumAllUnlocked && (
+                            <div className="mb-2">
+                              <div className="flex flex-col items-center gap-2 mb-2">
+                                {GROBLE_URLS.single && (
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 1 premium credit ₩3,900
+                                  </a>
+                                )}
+                                {GROBLE_URLS.trio && (
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 3 premium credits ₩10,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.all && (
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🏆 📕 Full PDF Report <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900
+                                  </a>
+                                )}
+                              </div>
+                              <p className="text-[10px] mb-1 text-center" style={{ color: 'rgba(230,193,90,0.75)' }}>
+                                📕 Full PDF Report: all 5 themes read in one go, saved as a single PDF with cover and chapters
+                              </p>
+                            </div>
+                          )}
+                          {unlockedThemes.length > 0 && (
+                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
+                              🔓 marked themes are paid — tap one to view its reading (24h per unlock; re-enter your phone number anytime to unlock again)
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Payment confirmation — its own card so buyers can always find it */}
+                        {!premiumAllUnlocked && (
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(134,239,172,0.25)' }}>
+                          <p className="text-xs font-cinzel mb-1" style={{ color: '#86efac' }}>🔓 Confirm payment — unlock what you bought</p>
+                          <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                            After paying, enter the phone number you used at checkout — credits and reports unlock instantly
+                          </p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            <input
+                              value={claimCode}
+                              onChange={e => setClaimCode(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
+                              placeholder="Payment phone number (or email / order no.)"
+                              className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(134,239,172,0.3)', color: 'var(--text)' }}
+                            />
+                            <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
+                              className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                              style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(134,239,172,0.4)', color: '#86efac' }}>
+                              {paymentLoading ? 'Checking...' : '🔓 Unlock'}
+                            </button>
+                          </div>
+                          {paymentError && (
+                            <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{paymentError}</p>
+                          )}
+                          {justUnlocked && unlockedThemes.length > 0 && (
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ Payment confirmed! Tap an unlocked item to view it</p>
+                          )}
+                        </div>
+                        )}
+
+                        {/* Custom question — paid feature, opened with one prem credit */}
+                        {!fullReport && !loveReport && (
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>Ask Nani Ma directly {questionUnlocked ? '🔓' : '🔒'}</p>
+                            {!questionUnlocked && <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Unlocks forever with 1 premium credit</p>}
+                          </div>
+                          {questionUnlocked ? (
+                            <>
+                              <textarea
+                                value={customQuestion}
+                                onChange={e => setCustomQuestion(e.target.value)}
+                                maxLength={500}
+                                rows={3}
+                                placeholder={'The more specific, the better the answer. Number multiple questions — e.g.:\n1. Is next year a good time to change jobs?\n2. Should I keep pursuing my current studies?'}
+                                className="w-full p-3 rounded-lg text-sm resize-none"
+                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
+                              />
+                              <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                                💡 Be specific, and number multiple questions — Nani Ma answers them one by one
+                              </p>
+                            </>
+                          ) : (
+                            <div className="p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px dashed rgba(201,168,76,0.3)' }}>
+                              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                                Write your questions specifically and numbered, and Nani Ma answers each from your chart. One premium credit (₩3,900) unlocks the question feature forever.
+                              </p>
+                              <div className="flex flex-wrap gap-2 items-center">
+                                {credits.prem > 0 && (
+                                  <button onClick={() => handleUseCredit('question')} disabled={paymentLoading} className="btn-buy">
+                                    {paymentLoading ? 'Unlocking...' : `🎟 Unlock with a credit · ${credits.prem} left`}
+                                  </button>
+                                )}
+                                {GROBLE_URLS.single && (
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
+                                    💳 Premium credit ₩3,900
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        )}
+
+                        {loveReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
+                            themes={LOVE_THEMES_EN}
+                            premiumToken={premiumToken}
+                            lang='en'
+                            title='AI Vedic Love Report'
+                          />
+                        ) : fullReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
+                            themes={PREMIUM_THEMES_EN}
+                            premiumToken={premiumToken}
+                            lang='en'
+                          />
+                        ) : (
+                        <AIInterpretation
+                          chart={chart}
+                          birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
+                          theme={aiTheme}
+                          premiumToken={premiumToken || undefined}
+                        />
+                        )}
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               )}

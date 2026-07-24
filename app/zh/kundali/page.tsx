@@ -1,12 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import BirthChartFormZh, { BirthInfo } from '@/components/BirthChartFormZh';
 import KundaliChart from '@/components/KundaliChart';
 import PlanetTable from '@/components/PlanetTable';
 import DashaTable from '@/components/DashaTable';
 import AIInterpretationZh from '@/components/AIInterpretationZh';
+import PremiumFullReport from '@/components/PremiumFullReport';
+import CreditWallet from '@/components/CreditWallet';
+import LiveCounter from '@/components/LiveCounter';
+import PaymentReturnPrompt from '@/components/PaymentReturnPrompt';
+import BrowserHint from '@/components/BrowserHint';
 import { ChartData } from '@/lib/vedic-calculations';
 
 const SIGN_NAMES_ZH = [
@@ -42,6 +47,39 @@ const THEMES = [
 
 type Theme = typeof THEMES[number];
 
+// Premium paid themes — purchased on Groble, unlocked via /api/payment/claim (HMAC token)
+const PREMIUM_THEMES_ZH = [
+  { id: 'career', name: '职业财富运', icon: '💼', d2: 10, desc: '集中分析职业与财富运势。请基于D1+D10星盘，告诉我职业才能、成功领域、财富流动规律，以及当前大运时期的财富走向。' },
+  { id: 'love',   name: '爱情婚姻运', icon: '💕', d2: 9,  desc: '集中分析爱情与婚姻运势。请基于D1+D9星盘，告诉我缘分模式、伴侣特质、感情中反复出现的问题和良缘出现的时机。' },
+  { id: 'health', name: '健康运',     icon: '🌿', d2: 6,  desc: '集中分析健康运势。请基于D1+D6星盘，告诉我先天薄弱之处、需注意的时期，以及保持健康的实际建议。' },
+  { id: 'yearly', name: '今年运势',   icon: '🌟', d2: 0,  desc: '集中分析今年和当前大运时期的运势。请以大运（Mahadasha）和中运（Antardasha）为中心，告诉我这个时期的特点、有利选择和需避免的事项。' },
+  { id: 'family', name: '子女家庭运', icon: '🏠', d2: 7,  desc: '集中分析子女运与家庭关系。请基于D1+D7星盘，告诉我子女缘分、与父母兄弟的关系模式以及家庭的影响。' },
+] as const;
+
+// Chapters of the love-focused PDF report (ids love1..love5 gate server-side)
+const LOVE_THEMES_ZH = [
+  { id: 'love1', name: '未来伴侣画像', icon: '💘', d2: 9, desc: '描绘未来伴侣的第一印象、气质、风格与性情，请生动地描绘这个人。' },
+  { id: 'love2', name: '缘分的时机',   icon: '⏳', d2: 9, desc: '用大运流转解读缘分开启的时期与婚姻之窗，告诉我现在处于什么季节。' },
+  { id: 'love3', name: '相遇的场景',   icon: '🗺️', d2: 9, desc: '在哪里、如何相遇，请描绘初次见面的场景与路径。' },
+  { id: 'love4', name: '我的魅力蓝图', icon: '🌹', d2: 9, desc: '对异性起作用的我的魅力是什么，何时开启、何时熄灭。' },
+  { id: 'love5', name: '孽缘辨别法',   icon: '🕯️', d2: 9, desc: '反复出现的孽缘模式、早期信号，以及爱情长久的条件。' },
+] as const;
+
+// Both the 5 deep-dive themes and the love-report chapters flow through the
+// same selection state.
+type PremiumTheme = { id: string; name: string; icon: string; d2: number; desc: string };
+
+// Groble product page links (set in Vercel env, inlined at build time)
+const GROBLE_URLS = {
+  single: process.env.NEXT_PUBLIC_GROBLE_SINGLE_URL ?? '',
+  trio: process.env.NEXT_PUBLIC_GROBLE_TRIO_URL ?? '',
+  all: process.env.NEXT_PUBLIC_GROBLE_ALL_URL ?? '',
+  stdSingle: process.env.NEXT_PUBLIC_GROBLE_STD_SINGLE_URL ?? '',
+  stdFive: process.env.NEXT_PUBLIC_GROBLE_STD_FIVE_URL ?? '',
+  stdAll: process.env.NEXT_PUBLIC_GROBLE_STD_ALL_URL ?? '',
+  love: process.env.NEXT_PUBLIC_GROBLE_LOVE_URL ?? '',
+};
+
 export default function ZhKundaliPage() {
   const [chart, setChart] = useState<ChartData | null>(null);
   const [birthInfo, setBirthInfo] = useState<BirthInfo | null>(null);
@@ -49,6 +87,95 @@ export default function ZhKundaliPage() {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'chart'|'planets'|'dasha'|'ai'>('chart');
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
+  const [premiumToken, setPremiumToken] = useState('');
+  const [unlockedThemes, setUnlockedThemes] = useState<string[]>([]);
+  const [credits, setCredits] = useState<{ std: number; prem: number }>({ std: 0, prem: 0 });
+  const [claimCode, setClaimCode] = useState('');
+  const [activePremium, setActivePremium] = useState<PremiumTheme | null>(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [justUnlocked, setJustUnlocked] = useState(false);
+  const [fullReport, setFullReport] = useState(false);
+  const [loveReport, setLoveReport] = useState(false);
+
+  // Restore premium token from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('jyoti_premium_token');
+    const savedThemes = localStorage.getItem('jyoti_premium_themes');
+    const savedExp = Number(localStorage.getItem('jyoti_premium_exp') ?? 0);
+    if (saved && savedExp > Date.now()) {
+      setPremiumToken(saved);
+      setUnlockedThemes((savedThemes ?? '').split(',').filter(Boolean));
+      try { setCredits(JSON.parse(localStorage.getItem('jyoti_premium_credits') ?? '')); } catch {}
+    } else if (saved) {
+      localStorage.removeItem('jyoti_premium_token');
+      localStorage.removeItem('jyoti_premium_themes');
+      localStorage.removeItem('jyoti_premium_credits');
+      localStorage.removeItem('jyoti_premium_exp');
+    }
+  }, []);
+
+  // Persists a token grant (from claim or use-credit) to state + localStorage.
+  function saveGrant(data: { token: string; themes: string[]; credits?: { std?: number; prem?: number }; exp: number }) {
+    const c = { std: data.credits?.std ?? 0, prem: data.credits?.prem ?? 0 };
+    localStorage.setItem('jyoti_premium_token', data.token);
+    localStorage.setItem('jyoti_premium_themes', data.themes.join(','));
+    localStorage.setItem('jyoti_premium_credits', JSON.stringify(c));
+    localStorage.setItem('jyoti_premium_exp', String(data.exp));
+    setPremiumToken(data.token);
+    setUnlockedThemes(data.themes);
+    setCredits(c);
+    setJustUnlocked(true);
+    if (PREMIUM_THEMES_ZH.every(t => data.themes.includes(t.id))) setFullReport(true);
+    else if (LOVE_THEMES_ZH.every(t => data.themes.includes(t.id))) setLoveReport(true);
+  }
+
+  // After paying on Groble, the buyer enters their order number or email here;
+  // the server matches it against webhook-recorded purchases and issues a token.
+  async function handleClaim() {
+    const code = claimCode.trim();
+    if (!code) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/payment/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, lang: 'zh' }),
+      });
+      const data = await res.json();
+      if (data.token) {
+        saveGrant(data);
+        setClaimCode('');
+      } else setPaymentError(data.error ?? '未找到付款记录。');
+    } catch { setPaymentError('验证失败，请稍后重试。'); }
+    setPaymentLoading(false);
+  }
+
+  // Stamped when a buy button opens Groble, so the return-prompt greets the
+  // buyer when they come back to this page after paying.
+  function markPendingBuy() {
+    try { localStorage.setItem('jyoti_pending_buy', String(Date.now())); } catch {}
+  }
+
+  // Spends one credit to permanently unlock the given theme id (stdN or premium).
+  async function handleUseCredit(themeId: string) {
+    if (!premiumToken) return;
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await fetch('/api/payment/use-credit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: premiumToken, theme: themeId, lang: 'zh' }),
+      });
+      const data = await res.json();
+      if (data.token) saveGrant(data);
+      else setPaymentError(data.error ?? '使用券使用失败。');
+    } catch { setPaymentError('使用券使用失败，请稍后重试。'); }
+    setPaymentLoading(false);
+  }
 
   async function handleSubmit(info: BirthInfo) {
     setLoading(true);
@@ -73,6 +200,10 @@ export default function ZhKundaliPage() {
     setLoading(false);
   }
 
+  const premiumAllUnlocked = PREMIUM_THEMES_ZH.every(t => unlockedThemes.includes(t.id));
+  const stdAllUnlocked = THEMES.every(t => unlockedThemes.includes('std' + t.id));
+  const loveAllUnlocked = LOVE_THEMES_ZH.every(t => unlockedThemes.includes(t.id));
+
   const moonPlanet = chart?.planets.find(p => p.id === 'moon');
   const sunPlanet  = chart?.planets.find(p => p.id === 'sun');
 
@@ -84,6 +215,9 @@ export default function ZhKundaliPage() {
   return (
     <div style={{ position: 'relative', minHeight: '100vh' }}>
       <div className="stars-bg" />
+      <CreditWallet lang="zh" credits={credits} unlockedCount={unlockedThemes.length} />
+      <PaymentReturnPrompt lang="zh" onUnlocked={saveGrant} />
+      <BrowserHint lang="zh" />
       <div style={{ position: 'relative', zIndex: 1 }}>
         <nav style={{ borderBottom: '1px solid rgba(201,168,76,0.1)', backdropFilter: 'blur(10px)', background: 'rgba(8,8,24,0.7)' }}
           className="sticky top-0 z-50">
@@ -355,38 +489,318 @@ export default function ZhKundaliPage() {
                       </div>
                     )}
 
-                    {activeTab === 'ai' && (
+                    {activeTab === 'ai' && (() => {
+                      const question = customQuestion.trim();
+                      const aiTheme = activePremium
+                        ? { name: activePremium.name, desc: activePremium.desc + (question ? ' 补充问题: ' + question : ''), d2: activePremium.d2, premiumId: activePremium.id }
+                        : selectedTheme
+                          ? { name: selectedTheme.name, desc: selectedTheme.desc + (question ? ' 补充问题: ' + question : ''), d2: selectedTheme.d2, premiumId: 'std' + selectedTheme.id }
+                          : question
+                            ? { name: '我的问题', desc: question, d2: 0, premiumId: 'question' }
+                            : undefined;
+                      const questionUnlocked = unlockedThemes.includes('question');
+                      return (
                       <div>
                         <h3 className="font-cinzel font-bold text-sm text-gold mb-4">
                           <span className="ornament">AI命盘解读</span>
                         </h3>
+                        <LiveCounter lang="zh" />
+                        {!fullReport && !loveReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
-                          <p className="text-xs font-cinzel mb-2" style={{ color: 'var(--gold-dim)' }}>选择解读主题（查看特定领域AI解读）</p>
-                          <div className="flex flex-wrap gap-1.5">
-                            <button
-                              onClick={() => setSelectedTheme(null)}
-                              className="px-2 py-1 rounded text-xs font-cinzel transition-all"
-                              style={{
-                                background: !selectedTheme ? 'rgba(201,168,76,0.2)' : 'transparent',
-                                border: '1px solid rgba(201,168,76,0.2)',
-                                color: !selectedTheme ? 'var(--gold-light)' : 'var(--text-muted)',
-                              }}>
-                              综合解读
-                            </button>
-                            {THEMES.map(t => (
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>选择解读主题 — 综合解读免费</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>深度主题 单项 ₩2,000 · 5项 ₩5,000 · 15项 ₩12,900</p>
+                          </div>
+                          <button
+                            onClick={() => { setSelectedTheme(null); setActivePremium(null); }}
+                            className="w-full px-2 py-1.5 mb-2 rounded text-xs font-cinzel transition-all"
+                            style={{
+                              background: !selectedTheme && !activePremium ? 'rgba(201,168,76,0.2)' : 'transparent',
+                              border: '1px solid rgba(201,168,76,0.2)',
+                              color: !selectedTheme && !activePremium ? 'var(--gold-light)' : 'var(--text-muted)',
+                            }}>
+                            ✦ 综合解读（免费）
+                          </button>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                            {THEMES.map(t => {
+                              const unlocked = unlockedThemes.includes('std' + t.id);
+                              return (
                               <button key={t.id}
-                                onClick={() => setSelectedTheme(t)}
-                                className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                onClick={() => { setSelectedTheme(t); setActivePremium(null); }}
+                                className="px-1 py-1.5 rounded text-[11px] font-cinzel transition-all text-center leading-tight"
                                 style={{
                                   background: selectedTheme?.id === t.id ? 'rgba(201,168,76,0.2)' : 'transparent',
                                   border: '1px solid rgba(201,168,76,0.2)',
-                                  color: selectedTheme?.id === t.id ? 'var(--gold-light)' : 'var(--text-muted)',
+                                  color: selectedTheme?.id === t.id || unlocked ? 'var(--gold-light)' : 'var(--text-muted)',
                                 }}>
-                                {t.name}
+                                {t.name} {unlocked ? '🔓' : '🔒'}
                               </button>
-                            ))}
+                              );
+                            })}
                           </div>
+                          {selectedTheme && !unlockedThemes.includes('std' + selectedTheme.id) && credits.std > 0 && (
+                            <button onClick={() => handleUseCredit('std' + selectedTheme.id)} disabled={paymentLoading}
+                              className="btn-buy mt-3" style={{ display: 'inline-flex' }}>
+                              {paymentLoading ? '解锁中...' : `🎟 用使用券解锁「${selectedTheme.name}」· 剩余 ${credits.std} 张`}
+                            </button>
+                          )}
+                          {!stdAllUnlocked && (
+                            <div className="mt-3">
+                              <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                                锁定的主题可先免费预览 — 购买后输入付款手机号即可充值使用券，自选主题解锁
+                              </p>
+                              <div className="flex flex-col items-center gap-2">
+                                {GROBLE_URLS.stdSingle && (
+                                  <a href={GROBLE_URLS.stdSingle} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 使用券1张 ₩2,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.stdFive && (
+                                  <a href={GROBLE_URLS.stdFive} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 使用券5张 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩10,000</s> ₩5,000 · 省50%
+                                  </a>
+                                )}
+                                {GROBLE_URLS.stdAll && (
+                                  <a href={GROBLE_URLS.stdAll} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    💳 全部15项 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩30,000</s> ₩12,900 · 省57%
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
+                        )}
+
+                        {/* Love-focused PDF report */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(190,24,93,0.08)', border: '1px solid rgba(244,114,182,0.3)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#f9a8d4' }}>💘 恋爱专项报告</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>5章PDF一册 · ₩11,900</p>
+                          </div>
+                          {!fullReport && !loveReport && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {LOVE_THEMES_ZH.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setActivePremium(active ? null : t);
+                                    setSelectedTheme(null);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(244,114,182,0.22)' : 'transparent',
+                                    border: active ? '1px solid rgba(244,114,182,0.55)' : '1px solid rgba(244,114,182,0.3)',
+                                    color: active || unlocked ? '#f9a8d4' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          )}
+                          {loveAllUnlocked ? (
+                            <button onClick={() => { setLoveReport(!loveReport); setFullReport(false); }}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: loveReport ? 'rgba(201,168,76,0.25)' : 'rgba(244,114,182,0.2)', border: '1px solid rgba(244,114,182,0.5)', color: '#fbcfe8' }}>
+                              {loveReport ? '↩ 查看单项主题' : '💘 恋爱专项报告（一份PDF）'}
+                            </button>
+                          ) : (
+                            <div className="mb-1">
+                              {GROBLE_URLS.love && (
+                                <div className="mb-2 flex justify-center">
+                                  <a href={GROBLE_URLS.love} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    💘 恋爱专项报告PDF <s style={{ opacity: 0.55, fontWeight: 400 }}>₩19,900</s> ₩11,900 · 省40%
+                                  </a>
+                                </div>
+                              )}
+                              <p className="text-[10px] mb-1" style={{ color: 'rgba(249,168,212,0.75)' }}>
+                                未来伴侣的印象与气质画像、缘分到来的时机、相遇的地点与初见场景、我的魅力蓝图、孽缘辨别 — 一份带封面与目录的完整PDF
+                              </p>
+                              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                                点击锁定的章节可免费预览 · 支付后在下方输入付款手机号即可解锁
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Premium themes */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 高级深度解读</p>
+                            <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>单项 ₩3,900 · 全部 ₩14,900</p>
+                          </div>
+                          {!fullReport && !loveReport && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {PREMIUM_THEMES_ZH.map(t => {
+                              const unlocked = unlockedThemes.includes(t.id);
+                              const active = activePremium?.id === t.id;
+                              return (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setActivePremium(active ? null : t);
+                                    setSelectedTheme(null);
+                                  }}
+                                  className="px-2 py-1 rounded text-xs font-cinzel transition-all"
+                                  style={{
+                                    background: active ? 'rgba(167,139,250,0.25)' : 'transparent',
+                                    border: active ? '1px solid rgba(167,139,250,0.5)' : '1px solid rgba(167,139,250,0.25)',
+                                    color: active || unlocked ? '#c4b5fd' : 'var(--text-muted)',
+                                  }}>
+                                  {t.icon} {t.name} {unlocked ? (active ? '✓' : '🔓') : '🔒'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          )}
+                          {activePremium && PREMIUM_THEMES_ZH.some(p => p.id === activePremium.id) && !unlockedThemes.includes(activePremium.id) && credits.prem > 0 && (
+                            <button onClick={() => handleUseCredit(activePremium.id)} disabled={paymentLoading}
+                              className="btn-buy mb-2" style={{ display: 'inline-flex' }}>
+                              {paymentLoading ? '解锁中...' : `🎟 用使用券解锁「${activePremium.name}」· 剩余高级使用券 ${credits.prem} 张`}
+                            </button>
+                          )}
+                          {premiumAllUnlocked && (
+                            <button onClick={() => { setFullReport(!fullReport); setLoveReport(false); }}
+                              className="mb-2 px-3 py-1.5 rounded-lg text-xs font-cinzel font-bold"
+                              style={{ background: fullReport ? 'rgba(201,168,76,0.25)' : 'rgba(167,139,250,0.2)', border: '1px solid rgba(167,139,250,0.5)', color: '#e9d5ff' }}>
+                              {fullReport ? '↩ 查看单项主题' : '📕 5项主题完整报告（一份PDF）'}
+                            </button>
+                          )}
+                          {!premiumAllUnlocked && (
+                            <div className="mb-2">
+                              <div className="flex flex-col items-center gap-2 mb-2">
+                                {GROBLE_URLS.single && (
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 高级使用券1张 ₩3,900
+                                  </a>
+                                )}
+                                {GROBLE_URLS.trio && (
+                                  <a href={GROBLE_URLS.trio} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🎟 高级使用券3张 ₩10,000
+                                  </a>
+                                )}
+                                {GROBLE_URLS.all && (
+                                  <a href={GROBLE_URLS.all} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy btn-buy-best" style={{ width: '100%', maxWidth: '340px', justifyContent: 'center' }}>
+                                    🏆 📕 完整PDF报告 <s style={{ opacity: 0.55, fontWeight: 400 }}>₩38,900</s> ₩14,900
+                                  </a>
+                                )}
+                              </div>
+                              <p className="text-[10px] mb-1 text-center" style={{ color: 'rgba(230,193,90,0.75)' }}>
+                                📕 完整PDF报告：一次解读5个主题，生成带封面与章节的完整PDF报告
+                              </p>
+                            </div>
+                          )}
+                          {unlockedThemes.length > 0 && (
+                            <p className="text-[10px] mt-2" style={{ color: 'rgba(196,181,253,0.6)' }}>
+                              🔓 标记的主题已完成支付 — 点击即可查看解读（本次有效24小时，之后可用同一手机号再次解锁）
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Payment confirmation — its own card so buyers can always find it */}
+                        {!(premiumAllUnlocked && stdAllUnlocked && loveAllUnlocked) && (
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(134,239,172,0.25)' }}>
+                          <p className="text-xs font-cinzel mb-1" style={{ color: '#86efac' }}>🔓 确认付款 — 解锁已购内容</p>
+                          <p className="text-[10px] mb-2" style={{ color: 'var(--text-muted)' }}>
+                            完成支付后，输入付款手机号 — 使用券与报告立即解锁
+                          </p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            <input
+                              value={claimCode}
+                              onChange={e => setClaimCode(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleClaim(); }}
+                              placeholder="付款手机号（或邮箱·订单号）"
+                              className="flex-1 min-w-[180px] px-3 py-1.5 rounded-lg text-xs"
+                              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(134,239,172,0.3)', color: 'var(--text)' }}
+                            />
+                            <button onClick={handleClaim} disabled={paymentLoading || !claimCode.trim()}
+                              className="px-3 py-1.5 rounded-lg text-xs font-cinzel"
+                              style={{ background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(134,239,172,0.4)', color: '#86efac' }}>
+                              {paymentLoading ? '验证中...' : '🔓 解锁'}
+                            </button>
+                          </div>
+                          {paymentError && (
+                            <p className="text-xs mt-2" style={{ color: '#fca5a5' }}>{paymentError}</p>
+                          )}
+                          {justUnlocked && unlockedThemes.length > 0 && (
+                            <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 支付确认成功！点击已解锁的内容查看</p>
+                          )}
+                        </div>
+                        )}
+
+                        {/* Custom question — paid feature, opened with one prem credit */}
+                        {!fullReport && !loveReport && (
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>直接向Nani Ma提问 {questionUnlocked ? '🔓' : '🔒'}</p>
+                            {!questionUnlocked && <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>1张高级使用券即可永久解锁</p>}
+                          </div>
+                          {questionUnlocked ? (
+                            <>
+                              <textarea
+                                value={customQuestion}
+                                onChange={e => setCustomQuestion(e.target.value)}
+                                maxLength={500}
+                                rows={3}
+                                placeholder={'问题越具体，回答越准确。多个问题请编号 — 例如：\n1. 明年换工作合适吗？\n2. 现在学的东西值得坚持吗？'}
+                                className="w-full p-3 rounded-lg text-sm resize-none"
+                                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
+                              />
+                              <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                                💡 尽量具体，多个问题请编号，Nani Ma会逐一作答
+                              </p>
+                            </>
+                          ) : (
+                            <div className="p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px dashed rgba(201,168,76,0.3)' }}>
+                              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                                把想问的问题编号写清楚，Nani Ma会依据星盘逐一回答。1张高级使用券（₩3,900）即可永久解锁提问功能。
+                              </p>
+                              <div className="flex flex-wrap gap-2 items-center">
+                                {credits.prem > 0 && (
+                                  <button onClick={() => handleUseCredit('question')} disabled={paymentLoading} className="btn-buy">
+                                    {paymentLoading ? '解锁中...' : `🎟 用使用券解锁提问 · 剩余 ${credits.prem} 张`}
+                                  </button>
+                                )}
+                                {GROBLE_URLS.single && (
+                                  <a href={GROBLE_URLS.single} target="_blank" rel="noopener noreferrer" onClick={markPendingBuy} className="btn-buy">
+                                    💳 高级使用券 ₩3,900
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        )}
+
+                        {loveReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{
+                              name: birthInfo.name,
+                              date: `${birthInfo.year}年${birthInfo.month}月${birthInfo.day}日`,
+                              time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
+                              place: birthInfo.place,
+                            }}
+                            themes={LOVE_THEMES_ZH}
+                            premiumToken={premiumToken}
+                            lang='zh'
+                            title='AI吠陀恋爱专项报告'
+                          />
+                        ) : fullReport && premiumToken ? (
+                          <PremiumFullReport
+                            chart={chart}
+                            birthInfo={{
+                              name: birthInfo.name,
+                              date: `${birthInfo.year}年${birthInfo.month}月${birthInfo.day}日`,
+                              time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
+                              place: birthInfo.place,
+                            }}
+                            themes={PREMIUM_THEMES_ZH}
+                            premiumToken={premiumToken}
+                            lang='zh'
+                          />
+                        ) : (
                         <AIInterpretationZh
                           chart={chart}
                           birthInfo={{
@@ -395,14 +809,13 @@ export default function ZhKundaliPage() {
                             time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
                             place: birthInfo.place,
                           }}
-                          theme={selectedTheme ? {
-                            name: selectedTheme.name,
-                            desc: selectedTheme.desc,
-                            d2: selectedTheme.d2,
-                          } : undefined}
+                          theme={aiTheme}
+                          premiumToken={premiumToken || undefined}
                         />
+                        )}
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </div>
               )}
