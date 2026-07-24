@@ -2,7 +2,7 @@ import LegalPage, { LegalSection } from '@/components/LegalPage';
 
 export const metadata = { title: '취소·환불 안내 — Jyoti' };
 
-const CONTACT = 'sean010429@gmail.com';
+const CONTACT = 'jyotivedic2026@gmail.com';
 
 export default function RefundPage() {
   return (
