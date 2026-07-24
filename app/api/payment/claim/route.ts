@@ -36,6 +36,12 @@ async function overRateLimit(ip: string): Promise<boolean> {
     const k = `rl:claim:${ip}`;
     const n = Number(await redis(['INCR', k]));
     if (n === 1) await redis(['EXPIRE', k, 60]);
+    else if (n > CLAIM_RATE_MAX) {
+      // If the first EXPIRE was lost, the counter would outlive its window and
+      // block this IP forever — re-arm the TTL whenever it is missing.
+      const ttl = Number(await redis(['TTL', k]));
+      if (ttl < 0) await redis(['EXPIRE', k, 60]);
+    }
     return n > CLAIM_RATE_MAX;
   } catch {
     return false;
@@ -55,22 +61,24 @@ async function applyReferral(
   rec: Record<string, unknown>,
   credits: Credits,
 ): Promise<ReferralResult> {
-  const refKey = await redis(['GET', `ref:${ref}`]);
-  if (typeof refKey !== 'string') return 'invalid';
-  if (refKey === key) return 'self';
+  const refKeyRaw = await redis(['GET', `ref:${ref}`]);
+  if (typeof refKeyRaw !== 'string') return 'invalid';
+  // The indexed key may have become an alias pointer after a later purchase
+  // unified wallets — resolve it so the reward lands in the live wallet and
+  // self-referral through a stale identifier is still caught.
+  const refTarget = await resolveRecord(refKeyRaw);
+  if (!refTarget) return 'invalid';
+  if (refTarget.key === key) return 'self';
   // NX: one redemption per buyer, and a retried request can't pay out twice.
-  const first = await redis(['SET', `refused:${key}`, refKey, 'NX', 'EX', YEAR_SECONDS]);
+  const first = await redis(['SET', `refused:${key}`, refTarget.key, 'NX', 'EX', YEAR_SECONDS]);
   if (first === null) return 'used';
 
-  const rawRef = await redis(['GET', refKey]);
-  if (typeof rawRef === 'string') {
-    const count = Number(await redis(['INCR', `refcnt:${refKey}`]));
-    await redis(['EXPIRE', `refcnt:${refKey}`, YEAR_SECONDS]);
-    if (count <= REFERRAL_REWARD_CAP) {
-      const r = JSON.parse(rawRef) as { credits?: Partial<Credits> };
-      const rc: Credits = { std: (r.credits?.std ?? 0) + 1, prem: r.credits?.prem ?? 0 };
-      await redis(['SET', refKey, JSON.stringify({ ...r, credits: rc }), 'EX', YEAR_SECONDS]);
-    }
+  const count = Number(await redis(['INCR', `refcnt:${refTarget.key}`]));
+  await redis(['EXPIRE', `refcnt:${refTarget.key}`, YEAR_SECONDS]);
+  if (count <= REFERRAL_REWARD_CAP) {
+    const r = refTarget.rec;
+    const rc: Credits = { std: (r.credits?.std ?? 0) + 1, prem: r.credits?.prem ?? 0 };
+    await redis(['SET', refTarget.key, JSON.stringify({ ...r, credits: rc }), 'EX', YEAR_SECONDS]);
   }
 
   credits.std += 1;

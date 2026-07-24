@@ -5,7 +5,9 @@ import { redis } from '@/lib/premium-server';
 
 // Headroom for slow generations plus one server-side retry (see below);
 // keeps long readings from being cut off by the platform's default limit.
-export const maxDuration = 60;
+// 120s covers the worst honest path: a DeepSeek attempt hitting its 50s abort
+// ceiling and the Gemini fallback (~25-30s) still finishing inside the budget.
+export const maxDuration = 120;
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -599,11 +601,16 @@ async function generateWithGemini(prompt: string): Promise<string> {
 }
 
 // DeepSeek path — paid readings. High max_tokens so long premium chapters are
-// never cut off. One retry on transient error.
+// never cut off. One retry on transient error. Normal chapters take 30–50s, so
+// the abort ceiling sits just above that: a hung request must die with enough
+// of the function budget left for the Gemini fallback to finish.
+const DEEPSEEK_TIMEOUT_MS = 50_000;
+
 async function callDeepSeekOnce(prompt: string): Promise<string> {
   const res = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
+    signal: AbortSignal.timeout(DEEPSEEK_TIMEOUT_MS),
     body: JSON.stringify({
       model: 'deepseek-v4-flash',
       messages: [{ role: 'user', content: prompt }],
@@ -622,6 +629,9 @@ async function generateWithDeepSeek(prompt: string): Promise<string> {
   try {
     return await callDeepSeekOnce(prompt);
   } catch (e) {
+    // A timed-out request already burned its share of the budget — go straight
+    // to the Gemini fallback instead of gambling on a second slow attempt.
+    if (e instanceof Error && (e.name === 'TimeoutError' || e.name === 'AbortError')) throw e;
     if (e instanceof Error && isTransient(e.message)) {
       await new Promise(r => setTimeout(r, 1500));
       return await callDeepSeekOnce(prompt);
