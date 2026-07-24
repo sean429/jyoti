@@ -228,8 +228,11 @@ export default function KoHomePage() {
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               ॥ यदा यदा हि धर्मस्य ग्लानिर्भवति भारत ॥
             </p>
-            <div className="flex items-center justify-center gap-4 mt-3">
+            <div className="flex items-center justify-center gap-4 mt-3 flex-wrap">
               <Link href="/en" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>English Version</Link>
+              <Link href="/ko/privacy" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>개인정보처리방침</Link>
+              <Link href="/ko/refund" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>취소·환불 안내</Link>
+              <Link href="/ko/disclaimer" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>이용 안내·면책</Link>
             </div>
             <p className="text-xs mt-3" style={{ color: 'rgba(156,163,175,0.4)' }}>
               본 서비스는 오락 및 자기 성찰 목적입니다. 라히리 아야남사 기반의 간소화된 행성 계산을 사용합니다.

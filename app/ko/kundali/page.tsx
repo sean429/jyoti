@@ -788,6 +788,9 @@ export default function KoKundaliPage() {
                           {justUnlocked && unlockedThemes.length > 0 && (
                             <p className="text-xs mt-2" style={{ color: '#86efac' }}>✨ 결제 확인 완료! 잠금이 풀린 항목을 눌러 확인하세요</p>
                           )}
+                          <p className="text-[10px] mt-2" style={{ color: 'var(--text-muted)' }}>
+                            디지털 콘텐츠 특성상 열람 후에는 환불이 제한됩니다 · <Link href="/ko/refund" style={{ textDecoration: 'underline' }}>취소·환불 안내</Link>
+                          </p>
                         </div>
                         )}
 
@@ -912,6 +915,11 @@ export default function KoKundaliPage() {
             <p className="text-xs" style={{ color: 'rgba(156,163,175,0.4)' }}>
               Jyoti · 베딕 점성술을 통한 별빛의 언어 · 이 해석은 영적인 탐색을 위한 것입니다
             </p>
+            <div className="flex items-center justify-center gap-4 mt-3 flex-wrap">
+              <Link href="/ko/privacy" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>개인정보처리방침</Link>
+              <Link href="/ko/refund" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>취소·환불 안내</Link>
+              <Link href="/ko/disclaimer" className="text-xs" style={{ color: 'rgba(156,163,175,0.5)' }}>이용 안내·면책</Link>
+            </div>
           </div>
         </footer>
       </div>
