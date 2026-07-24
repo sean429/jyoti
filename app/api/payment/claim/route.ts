@@ -18,7 +18,29 @@ const MESSAGES = {
     en: 'Something went wrong. Please try again shortly.',
     zh: '验证时出错，请稍后重试。',
   },
+  tooMany: {
+    ko: '잠시 후 다시 시도해주세요.',
+    en: 'Too many attempts. Please try again in a moment.',
+    zh: '尝试过于频繁，请稍后再试。',
+  },
 };
+
+// Phone/email is the only key to a wallet, so a code guess must not be free to
+// automate. 10/min per IP defeats brute force (10^8 numbers would take ~19
+// years) while leaving ample room for the return-prompt's own auto-retries and
+// shared carrier-NAT IPs. Redis-backed so it holds across serverless instances;
+// fails open if Redis hiccups, since a claim needs Redis anyway.
+const CLAIM_RATE_MAX = 10;
+async function overRateLimit(ip: string): Promise<boolean> {
+  try {
+    const k = `rl:claim:${ip}`;
+    const n = Number(await redis(['INCR', k]));
+    if (n === 1) await redis(['EXPIRE', k, 60]);
+    return n > CLAIM_RATE_MAX;
+  } catch {
+    return false;
+  }
+}
 
 function pickLang(lang: unknown): 'ko' | 'en' | 'zh' {
   return lang === 'en' ? 'en' : lang === 'zh' ? 'zh' : 'ko';
@@ -65,6 +87,11 @@ export async function POST(req: NextRequest) {
     const code = String(body.code ?? '').trim().toLowerCase();
     if (!code || code.length > 200) {
       return NextResponse.json({ error: MESSAGES.notFound[lk] }, { status: 400 });
+    }
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+    if (await overRateLimit(ip)) {
+      return NextResponse.json({ error: MESSAGES.tooMany[lk] }, { status: 429 });
     }
 
     // Master/tester code (env MASTER_CODE): refreshes a record with every
