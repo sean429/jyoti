@@ -33,12 +33,12 @@ export default function PrivacyPage() {
           AI 해석 생성을 위해 입력하신 이름·출생 정보와 차트 데이터가 아래 외부 사업자에게 전송됩니다.
           전송된 정보는 해석 생성에만 사용됩니다.
         </p>
-        <p className="mb-2">· Google LLC (미국) — 무료 종합 해석 생성 (Gemini API)</p>
-        <p className="mb-2">· DeepSeek — 杭州深度求索人工智能基础技术研究有限公司 (중국) — 유료 심층 해석 생성</p>
+        <p className="mb-2">· DeepSeek — 杭州深度求索人工智能基础技术研究有限公司 (중국) — 무료·유료 해석 생성 (주 처리)</p>
+        <p className="mb-2">· Google LLC (미국) — 해석 생성 (혼잡·장애 시 대체 처리, Gemini API)</p>
         <p className="mb-2">· Upstash, Inc. (미국) — 구매 기록 저장</p>
         <p className="mb-2">· Vercel Inc. (미국) — 서비스 호스팅</p>
         <p className="mb-3">· 그로블(Groble) — 결제 처리. 카드·간편결제 정보는 그로블이 자체 수집·처리하며, 서비스는 결제 완료 확인 정보(주문번호·전화번호·이메일)만 수신합니다.</p>
-        <p>국외 이전을 원치 않으시는 경우 유료 해석 이용을 중단하시면 되며, 이 경우 출생 정보가 중국 소재 사업자에게 전송되지 않습니다.</p>
+        <p>국외 이전에 동의하지 않으시는 경우 AI 해석 기능 이용을 중단하실 수 있으며, AI 해석 없이 차트 계산만 이용하는 경우 출생 정보는 위 AI 사업자에게 전송되지 않습니다.</p>
       </LegalSection>
 
       <LegalSection heading="3. 보유 기간">

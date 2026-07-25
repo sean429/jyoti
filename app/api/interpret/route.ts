@@ -484,25 +484,43 @@ function verifyPremiumToken(token: string): { themes: string[]; exp: number } {
 }
 
 // ---------------------------------------------------------------------------
-// In-memory rate limiter — best-effort in serverless (resets per cold start).
-// Replace with Upstash/Vercel KV for cross-instance enforcement.
-// ---------------------------------------------------------------------------
+// Redis-backed rate limit — shared across serverless instances, unlike the
+// old in-memory map that reset on every cold start and multiplied under load.
+// Fails open: readings need working infrastructure anyway.
 // RATE_MAX must comfortably exceed 5: the full-report mode fires 5 sequential
 // interpret calls, and fast generations can land inside one window.
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX       = 8;
-const ipMap = new Map<string, { count: number; resetAt: number }>();
+// ---------------------------------------------------------------------------
+const RATE_MAX = 8;
 
-function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = ipMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    ipMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+async function overRateLimit(ip: string): Promise<boolean> {
+  try {
+    const k = `rl:interp:${ip}`;
+    const n = Number(await redis(['INCR', k]));
+    if (n === 1) await redis(['EXPIRE', k, 60]);
+    else if (n > RATE_MAX) {
+      // Re-arm a lost TTL so a stuck counter can't block an IP forever.
+      const ttl = Number(await redis(['TTL', k]));
+      if (ttl < 0) await redis(['EXPIRE', k, 60]);
+    }
+    return n > RATE_MAX;
+  } catch {
+    return false;
+  }
+}
+
+// Daily circuit breaker for the free path: past this many readings in a day,
+// free generations stop spending DeepSeek balance and retreat to Gemini's
+// free tier. Raise it as honest traffic grows — it exists so a spike or abuse
+// caps one day's spend instead of draining the balance.
+const FREE_DAILY_DEEPSEEK_CAP = 2000;
+
+async function underFreeDailyCap(): Promise<boolean> {
+  try {
+    const n = Number(await redis(['GET', `stats:reads:${new Date().toISOString().slice(0, 10)}`]) ?? 0);
+    return n < FREE_DAILY_DEEPSEEK_CAP;
+  } catch {
     return true;
   }
-  if (entry.count >= RATE_MAX) return false;
-  entry.count++;
-  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -643,7 +661,7 @@ async function generateWithDeepSeek(prompt: string): Promise<string> {
 export async function POST(req: NextRequest) {
   // Rate limit check
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  if (!checkRateLimit(ip)) {
+  if (await overRateLimit(ip)) {
     return NextResponse.json(
       { error: '요청이 일시적으로 많습니다. 잠시 후 다시 시도해주세요.' },
       { status: 429 }
@@ -693,25 +711,53 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = buildReadingPrompt({ chart, birthInfo, theme, lang, previewMode });
-
-    // Paid full readings run on DeepSeek (far cheaper at scale); the free
-    // general reading and the short preview stay on Gemini's free tier, which
-    // reads warmer for that summary and costs nothing on the highest-volume
-    // path. If DeepSeek fails, fall back to Gemini so a paying reader is never
-    // left with an error.
     const isGated = !!theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId);
-    const usePaidModel = isGated && !previewMode && !!DEEPSEEK_KEY;
 
-    let text: string;
-    if (usePaidModel) {
+    // Identical free requests are served from cache: a visitor regenerating
+    // the same chart costs nothing, and hammering one payload can't burn
+    // budget. Keyed by prompt hash, which already includes today's date.
+    const promptHash = crypto.createHash('sha256').update(prompt).digest('base64url').slice(0, 27);
+    if (!isGated) {
       try {
-        text = await generateWithDeepSeek(prompt);
-      } catch (e) {
-        console.error('[interpret] deepseek failed, falling back to gemini:', e instanceof Error ? e.message : e);
-        text = await generateWithGemini(prompt);
+        const cached = await redis(['GET', `cache:free:${promptHash}`]);
+        if (typeof cached === 'string' && cached.length > 300) {
+          return NextResponse.json({ interpretation: cached, preview: false });
+        }
+      } catch {}
+    }
+
+    // DeepSeek serves everything while the free path is under its daily cost
+    // ceiling; past it, free readings retreat to Gemini's free tier so a spike
+    // caps the day's spend. Paid readings always get DeepSeek. Any DeepSeek
+    // failure falls back to Gemini so no reader is left with an error.
+    const usePaidModel = !!DEEPSEEK_KEY && (isGated || await underFreeDailyCap());
+
+    const generateOnce = async (): Promise<string> => {
+      if (usePaidModel) {
+        try {
+          return await generateWithDeepSeek(prompt);
+        } catch (e) {
+          console.error('[interpret] deepseek failed, falling back to gemini:', e instanceof Error ? e.message : e);
+          return generateWithGemini(prompt);
+        }
       }
-    } else {
-      text = await generateWithGemini(prompt);
+      return generateWithGemini(prompt);
+    };
+
+    let text = await generateOnce();
+    // The free reading promises a 1,000-char floor; a rare clipped generation
+    // gets one silent second chance and we keep the longer result.
+    if (!isGated && text.length < 1000) {
+      try {
+        const second = await generateOnce();
+        if (second.length > text.length) text = second;
+      } catch {}
+    }
+
+    console.log('[interpret] served:', usePaidModel ? 'deepseek' : 'gemini', isGated ? 'paid' : 'free', `${text.length}ch`);
+
+    if (!isGated) {
+      void redis(['SET', `cache:free:${promptHash}`, text, 'EX', 3600]).catch(() => {});
     }
 
     // Fire-and-forget usage counters for the "N read their stars today" line —

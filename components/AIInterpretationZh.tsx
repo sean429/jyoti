@@ -31,6 +31,7 @@ export default function AIInterpretationZh({ chart, birthInfo, theme, premiumTok
   const [lastThemeId, setLastThemeId] = useState<string>('');
   const [stage, setStage] = useState(0);
   const [shareMsg, setShareMsg] = useState('');
+  const [todayCount, setTodayCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading) return;
@@ -69,6 +70,7 @@ export default function AIInterpretationZh({ chart, birthInfo, theme, premiumTok
 
   async function generate() {
     setLoading(true); setError(''); setInterpretation(''); setLastThemeId(themeKey);
+    void fetch('/api/stats').then(r => r.json()).then(d => setTodayCount(typeof d.today === 'number' ? d.today : null)).catch(() => {});
     // Silently retry transient throttles behind the loading animation.
     const RETRY_DELAYS = [1500, 3500];
     for (let attempt = 0; ; attempt++) {
@@ -194,6 +196,9 @@ export default function AIInterpretationZh({ chart, birthInfo, theme, premiumTok
           </div>
           <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>{LOADING_STAGES[stage]}</p>
           <p className='text-xs mt-1' style={{ color: 'var(--text-muted)' }}>正在解析{birthInfo.name}的宇宙蓝图</p>
+          {todayCount !== null && todayCount >= 3 && (
+            <p className='text-xs mt-1.5' style={{ color: 'var(--gold-dim)' }}>✨ 今天第 {todayCount + 1} 位读星的客人</p>
+          )}
           <div className='flex justify-center gap-1.5 mt-3'>
             {LOADING_STAGES.map((_, i) => (
               <div key={i} className='w-1.5 h-1.5 rounded-full transition-all'

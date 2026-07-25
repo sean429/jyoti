@@ -31,6 +31,9 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
   const [lastThemeId, setLastThemeId] = useState<string>('');
   const [stage, setStage] = useState(0);
   const [shareMsg, setShareMsg] = useState('');
+  // Real daily read count (from /api/stats) shown while generating — honest
+  // social proof, hidden until the day has a few reads so it never looks sad.
+  const [todayCount, setTodayCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading) return;
@@ -70,6 +73,7 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
 
   async function generate() {
     setLoading(true); setError(''); setInterpretation(''); setLastThemeId(themeKey);
+    void fetch('/api/stats').then(r => r.json()).then(d => setTodayCount(typeof d.today === 'number' ? d.today : null)).catch(() => {});
     // Silently retry transient throttles (429/5xx/network) behind the loading
     // animation so a busy free-tier moment never surfaces as an error.
     const RETRY_DELAYS = [1500, 3500];
@@ -196,6 +200,9 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
           </div>
           <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>{LOADING_STAGES[stage]}</p>
           <p className='text-xs mt-1' style={{ color: 'var(--text-muted)' }}>{birthInfo.name}님의 우주적 청사진을 풀어냅니다</p>
+          {todayCount !== null && todayCount >= 3 && (
+            <p className='text-xs mt-1.5' style={{ color: 'var(--gold-dim)' }}>✨ 오늘 {todayCount + 1}번째 별을 읽고 있어요</p>
+          )}
           <div className='flex justify-center gap-1.5 mt-3'>
             {LOADING_STAGES.map((_, i) => (
               <div key={i} className='w-1.5 h-1.5 rounded-full transition-all'

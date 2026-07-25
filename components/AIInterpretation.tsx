@@ -31,6 +31,7 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
   const [lastThemeId, setLastThemeId] = useState<string>('');
   const [stage, setStage] = useState(0);
   const [shareMsg, setShareMsg] = useState('');
+  const [todayCount, setTodayCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (!loading) return;
@@ -72,6 +73,7 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
     setError('');
     setInterpretation('');
     setLastThemeId(themeKey);
+    void fetch('/api/stats').then(r => r.json()).then(d => setTodayCount(typeof d.today === 'number' ? d.today : null)).catch(() => {});
     // Silently retry transient throttles behind the loading animation.
     const RETRY_DELAYS = [1500, 3500];
     for (let attempt = 0; ; attempt++) {
@@ -210,6 +212,9 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
           </div>
           <p className="font-cinzel text-sm" style={{ color: 'var(--gold)' }}>{LOADING_STAGES[stage]}</p>
           <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Analyzing planetary influences for {birthInfo.name}</p>
+          {todayCount !== null && todayCount >= 3 && (
+            <p className="text-xs mt-1.5" style={{ color: 'var(--gold-dim)' }}>✨ Reading chart no. {todayCount + 1} today</p>
+          )}
           <div className="flex justify-center gap-1.5 mt-3">
             {LOADING_STAGES.map((_, i) => (
               <div key={i} className="w-1.5 h-1.5 rounded-full transition-all"
