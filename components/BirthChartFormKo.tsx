@@ -13,6 +13,8 @@ export interface BirthInfo {
   longitude: number;
   utcOffset: number;
   place: string;
+  // Interpretation only — never sent to the chart-calculation API.
+  gender?: 'female' | 'male';
 }
 
 interface Props {
@@ -28,6 +30,7 @@ interface GeoResult {
 
 export default function BirthChartFormKo({ onSubmit, loading }: Props) {
   const [name, setName] = useState('');
+  const [gender, setGender] = useState<'female' | 'male' | ''>('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [cityQuery, setCityQuery] = useState('');
@@ -78,6 +81,7 @@ export default function BirthChartFormKo({ onSubmit, loading }: Props) {
       longitude: lon,
       utcOffset,
       place: placeName,
+      ...(gender ? { gender } : {}),
     });
   }
 
@@ -91,6 +95,24 @@ export default function BirthChartFormKo({ onSubmit, loading }: Props) {
           value={name}
           onChange={e => setName(e.target.value)}
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-cinzel text-gold-solid mb-2">성별 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>(선택 — 배우자·인연 해석이 더 정확해져요)</span></label>
+        <div className="flex gap-2">
+          {([['female', '여성'], ['male', '남성'], ['', '선택 안 함']] as const).map(([val, label]) => (
+            <button key={label} type="button"
+              onClick={() => setGender(val)}
+              className="px-4 py-2 rounded-lg text-sm font-cinzel transition-all"
+              style={{
+                background: gender === val ? 'rgba(201,168,76,0.2)' : 'rgba(255,255,255,0.03)',
+                border: gender === val ? '1px solid rgba(201,168,76,0.55)' : '1px solid rgba(201,168,76,0.2)',
+                color: gender === val ? 'var(--gold-light)' : 'var(--text-muted)',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

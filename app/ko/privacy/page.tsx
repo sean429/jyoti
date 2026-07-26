@@ -14,7 +14,7 @@ export default function PrivacyPage() {
 
       <LegalSection heading="1. 수집하는 정보와 이용 목적">
         <p className="mb-3">
-          <strong style={{ color: 'var(--gold-light)' }}>차트 해석 이용 시</strong> — 이름(선택), 생년월일, 출생 시각(선택), 출생지, 시간대.
+          <strong style={{ color: 'var(--gold-light)' }}>차트 해석 이용 시</strong> — 이름(선택), 성별(선택), 생년월일, 출생 시각(선택), 출생지, 시간대.
           베딕 차트 계산과 AI 해석 생성에만 사용됩니다. 이 출생 정보는 서버에 저장하지 않으며,
           해석 생성이 끝나면 서버에는 남지 않습니다(생성된 해석은 이용자의 브라우저에만 임시 보관됩니다).
         </p>

@@ -149,7 +149,8 @@ export default function EnKundaliPage() {
   async function handleSubmit(info: BirthInfo) {
     setLoading(true); setError(''); setChart(null); setBirthInfo(info);
     try {
-      const res = await fetch('/api/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(info) });
+      const { gender: _omit, ...calcInfo } = info;
+      const res = await fetch('/api/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(calcInfo) });
       const data = await res.json();
       if (data.error) setError(data.error);
       else { setChart(data); setActiveTab('chart'); setTimeout(() => document.getElementById('chart-section')?.scrollIntoView({ behavior: 'smooth' }), 100); }
@@ -509,7 +510,7 @@ export default function EnKundaliPage() {
                         {loveReport && premiumToken ? (
                           <PremiumFullReport
                             chart={chart}
-                            birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
+                            birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place, gender: birthInfo.gender }}
                             themes={LOVE_THEMES_EN}
                             premiumToken={premiumToken}
                             lang='en'
@@ -518,7 +519,7 @@ export default function EnKundaliPage() {
                         ) : fullReport && premiumToken ? (
                           <PremiumFullReport
                             chart={chart}
-                            birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
+                            birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place, gender: birthInfo.gender }}
                             themes={PREMIUM_THEMES_EN}
                             premiumToken={premiumToken}
                             lang='en'
@@ -526,7 +527,7 @@ export default function EnKundaliPage() {
                         ) : (
                         <AIInterpretation
                           chart={chart}
-                          birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place }}
+                          birthInfo={{ name: birthInfo.name, date: birthInfo.day+'/'+birthInfo.month+'/'+birthInfo.year, time: String(birthInfo.hour).padStart(2,'0')+':'+String(birthInfo.minute).padStart(2,'0'), place: birthInfo.place, gender: birthInfo.gender }}
                           theme={aiTheme}
                           premiumToken={premiumToken || undefined}
                         />

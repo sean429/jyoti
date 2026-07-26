@@ -183,10 +183,11 @@ export default function ZhKundaliPage() {
     setChart(null);
     setBirthInfo(info);
     try {
-      const res = await fetch('/api/calculate', {
+      const { gender: _omit, ...calcInfo } = info;
+        const res = await fetch('/api/calculate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(info),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(calcInfo),
       });
       const data = await res.json();
       if (data.error) setError(data.error);
@@ -781,6 +782,7 @@ export default function ZhKundaliPage() {
                               date: `${birthInfo.year}年${birthInfo.month}月${birthInfo.day}日`,
                               time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
                               place: birthInfo.place,
+                              gender: birthInfo.gender,
                             }}
                             themes={LOVE_THEMES_ZH}
                             premiumToken={premiumToken}
@@ -795,6 +797,7 @@ export default function ZhKundaliPage() {
                               date: `${birthInfo.year}年${birthInfo.month}月${birthInfo.day}日`,
                               time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
                               place: birthInfo.place,
+                              gender: birthInfo.gender,
                             }}
                             themes={PREMIUM_THEMES_ZH}
                             premiumToken={premiumToken}
@@ -808,6 +811,7 @@ export default function ZhKundaliPage() {
                             date: `${birthInfo.year}年${birthInfo.month}月${birthInfo.day}日`,
                             time: `${String(birthInfo.hour).padStart(2,'0')}:${String(birthInfo.minute).padStart(2,'0')}`,
                             place: birthInfo.place,
+                            gender: birthInfo.gender,
                           }}
                           theme={aiTheme}
                           premiumToken={premiumToken || undefined}

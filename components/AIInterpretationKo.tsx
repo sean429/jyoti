@@ -7,7 +7,7 @@ interface Theme { name: string; desc: string; d2: number; premiumId?: string; }
 
 interface Props {
   chart: ChartData;
-  birthInfo: { name: string; date: string; time: string; place: string };
+  birthInfo: { name: string; date: string; time: string; place: string; gender?: string };
   theme?: Theme;
   premiumToken?: string;
 }
@@ -57,7 +57,7 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
   // Session cache: switching themes (or tabs) restores past readings for the
   // same chart instead of burning another API call. Cleared naturally when the
   // birth data changes (key includes it) or the browser session ends.
-  const cacheKey = `jyoti_interp_ko|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${themeKey}`;
+  const cacheKey = `jyoti_interp_ko|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${birthInfo.gender ?? ''}|${themeKey}`;
 
   useEffect(() => {
     try {

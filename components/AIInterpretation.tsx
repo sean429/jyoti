@@ -7,7 +7,7 @@ interface Theme { name: string; desc: string; d2: number; premiumId?: string; }
 
 interface Props {
   chart: ChartData;
-  birthInfo: { name: string; date: string; time: string; place: string; };
+  birthInfo: { name: string; date: string; time: string; place: string; gender?: string };
   theme?: Theme;
   premiumToken?: string;
 }
@@ -54,7 +54,7 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
   const themeKey = theme ? theme.name + '-' + theme.d2 : 'general';
   // Session cache: switching themes restores past readings for the same chart
   // instead of burning another API call.
-  const cacheKey = `jyoti_interp_en|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${themeKey}`;
+  const cacheKey = `jyoti_interp_en|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${birthInfo.gender ?? ''}|${themeKey}`;
 
   useEffect(() => {
     try {

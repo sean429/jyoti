@@ -13,6 +13,8 @@ export interface BirthInfo {
   longitude: number;
   utcOffset: number;
   place: string;
+  // Interpretation only — never sent to the chart-calculation API.
+  gender?: 'female' | 'male';
 }
 
 interface Props {
@@ -28,6 +30,7 @@ interface GeoResult {
 
 export default function BirthChartFormZh({ onSubmit, loading }: Props) {
   const [name, setName] = useState('');
+  const [gender, setGender] = useState<'female' | 'male' | ''>('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [cityQuery, setCityQuery] = useState('');
@@ -78,6 +81,7 @@ export default function BirthChartFormZh({ onSubmit, loading }: Props) {
       longitude: lon,
       utcOffset,
       place: placeName,
+      ...(gender ? { gender } : {}),
     });
   }
 
@@ -92,6 +96,25 @@ export default function BirthChartFormZh({ onSubmit, loading }: Props) {
           onChange={e => setName(e.target.value)}
         />
       </div>
+
+      <div>
+        <label className="block text-sm font-cinzel text-gold-solid mb-2">性别 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>(可选 — 让伴侣与姻缘解读更准确)</span></label>
+        <div className="flex gap-2">
+          {([['female', '女'], ['male', '男'], ['', '不选择']] as const).map(([val, label]) => (
+            <button key={label} type="button"
+              onClick={() => setGender(val)}
+              className="px-4 py-2 rounded-lg text-sm font-cinzel transition-all"
+              style={{
+                background: gender === val ? 'rgba(201,168,76,0.2)' : 'rgba(255,255,255,0.03)',
+                border: gender === val ? '1px solid rgba(201,168,76,0.55)' : '1px solid rgba(201,168,76,0.2)',
+                color: gender === val ? 'var(--gold-light)' : 'var(--text-muted)',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>

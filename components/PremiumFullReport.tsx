@@ -7,7 +7,7 @@ interface FTheme { id: string; name: string; icon: string; d2: number; desc: str
 
 interface Props {
   chart: ChartData;
-  birthInfo: { name: string; date: string; time: string; place: string };
+  birthInfo: { name: string; date: string; time: string; place: string; gender?: string };
   themes: ReadonlyArray<FTheme>;
   premiumToken: string;
   lang: 'ko' | 'zh' | 'en';
@@ -54,7 +54,7 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
   // Session cache: finished sections survive tab switches and page reloads for
   // the same chart, so buyers never pay the 3-5 minute generation twice.
   // The theme-id list keeps different reports (premium vs love) apart.
-  const cacheKey = `jyoti_fullreport_${lang}|${themes.map(t => t.id).join('.')}|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}`;
+  const cacheKey = `jyoti_fullreport_${lang}|${themes.map(t => t.id).join('.')}|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${birthInfo.gender ?? ''}`;
   const [sections, setSections] = useState<{ theme: FTheme; text: string }[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
