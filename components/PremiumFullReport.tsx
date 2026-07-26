@@ -102,19 +102,50 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
         import('jspdf'),
       ]);
       const canvas = await html2canvas(node, { scale: 2, backgroundColor: PDF_PURPLE, useCORS: true, logging: false });
+      const scale = canvas.height / node.offsetHeight; // css px -> canvas px
+
+      // Cut only at the bottoms of whole blocks (paragraphs, headings, chapter
+      // boxes), never through a line — so no paragraph is sliced mid-sentence.
+      const nodeTop = node.getBoundingClientRect().top;
+      const boundaries = [0];
+      node.querySelectorAll('p, h2, [data-pdf-box]').forEach(el => {
+        const b = (el.getBoundingClientRect().bottom - nodeTop) * scale;
+        if (b > 0 && b <= canvas.height) boundaries.push(b);
+      });
+      boundaries.push(canvas.height);
+      const cuts = Array.from(new Set(boundaries)).sort((a, b) => a - b);
+
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageW = 210, pageH = 297;
-      const imgH = (canvas.height * pageW) / canvas.width;
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
-      let heightLeft = imgH;
-      let position = 0;
-      pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH);
-      heightLeft -= pageH;
-      while (heightLeft > 0) {
-        position -= pageH;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH);
-        heightLeft -= pageH;
+      const pageW = 210, pageH = 297, margin = 12;
+      const contentWmm = pageW - margin * 2;
+      const pxPerMm = canvas.width / contentWmm;
+      const usablePx = (pageH - margin * 2) * pxPerMm; // canvas px that fit one page
+
+      let startPx = 0;
+      let first = true;
+      while (startPx < canvas.height - 1) {
+        const maxEnd = startPx + usablePx;
+        // largest block-bottom that fits; if none fits, a single block is taller
+        // than a page, so fall back to a hard cut at the page height.
+        let endPx = cuts.filter(c => c > startPx && c <= maxEnd).pop() ?? maxEnd;
+        if (endPx <= startPx) endPx = maxEnd;
+        const sliceH = Math.min(endPx - startPx, canvas.height - startPx);
+
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width;
+        slice.height = sliceH;
+        const ctx = slice.getContext('2d')!;
+        ctx.fillStyle = PDF_PURPLE;
+        ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.drawImage(canvas, 0, startPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+        if (!first) pdf.addPage();
+        first = false;
+        // Fill the whole page purple so the margins match the report.
+        pdf.setFillColor(PDF_PURPLE);
+        pdf.rect(0, 0, pageW, pageH, 'F');
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, contentWmm, sliceH / pxPerMm);
+        startPx = endPx;
       }
       const base = (title ?? S.title).replace(/[\\/:*?"<>|]/g, '');
       pdf.save(`${base} - ${birthInfo.name}.pdf`);
@@ -307,7 +338,7 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
               </div>
             </div>
             {sections.map(({ theme, text }, idx) => (
-              <div key={theme.id} style={{
+              <div key={theme.id} data-pdf-box style={{
                 marginBottom: '22px', padding: '26px 28px', borderRadius: '16px',
                 background: PDF_BOX_BG, border: `1px solid ${PDF_BOX_BORDER}`,
               }}>
