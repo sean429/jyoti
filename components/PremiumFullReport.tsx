@@ -1,7 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ChartData } from '@/lib/vedic-calculations';
+
+// The service's signature purple, and boxes that guarantee text contrast on it.
+const PDF_PURPLE = '#241442';
+const PDF_BOX_BG = 'rgba(12,8,28,0.62)';
+const PDF_BOX_BORDER = 'rgba(201,168,76,0.35)';
+const PDF_TEXT = '#efe9ff';
+const PDF_GOLD = '#e6c15a';
+const PDF_MUTED = '#b9a9e0';
 
 interface FTheme { id: string; name: string; icon: string; d2: number; desc: string; }
 
@@ -22,7 +30,8 @@ const STRINGS = {
     generating: (name: string, i: number, n: number) => `${i}/${n} · ${name} 해석 중...`,
     resume: '▶ 이어서 생성',
     failed: '생성이 중단되었습니다. 이어서 다시 시도할 수 있어요.',
-    pdf: '📄 PDF로 저장',
+    pdf: '📥 PDF로 다운로드',
+    pdfBusy: '📥 PDF 만드는 중...',
     done: (n: number) => `${n}개 챕터 해석이 모두 완성되었습니다`,
     toc: '차례',
   },
@@ -33,7 +42,8 @@ const STRINGS = {
     generating: (name: string, i: number, n: number) => `${i}/${n} · 正在解读 ${name}...`,
     resume: '▶ 继续生成',
     failed: '生成中断，可以继续重试。',
-    pdf: '📄 保存为PDF',
+    pdf: '📥 下载PDF',
+    pdfBusy: '📥 正在生成PDF...',
     done: (n: number) => `${n}个章节的解读已全部完成`,
     toc: '目录',
   },
@@ -44,7 +54,8 @@ const STRINGS = {
     generating: (name: string, i: number, n: number) => `${i}/${n} · Reading ${name}...`,
     resume: '▶ Resume',
     failed: 'Generation was interrupted. You can resume where it stopped.',
-    pdf: '📄 Save as PDF',
+    pdf: '📥 Download PDF',
+    pdfBusy: '📥 Building PDF...',
     done: (n: number) => `All ${n} chapter readings are complete`,
     toc: 'Contents',
   },
@@ -73,8 +84,46 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
   });
   const [current, setCurrent] = useState(-1); // index being generated; -1 idle
   const [error, setError] = useState('');
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
   const S = STRINGS[lang];
   const doneAll = sections.length === themes.length;
+
+  // Renders the hidden purple report to a real PDF file and downloads it in one
+  // click — no browser print dialog. html2canvas rasterizes the off-screen
+  // node; jsPDF slices that tall image across A4 pages.
+  async function downloadPdf() {
+    const node = pdfRef.current;
+    if (!node || pdfBusy) return;
+    setPdfBusy(true);
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+      const canvas = await html2canvas(node, { scale: 2, backgroundColor: PDF_PURPLE, useCORS: true, logging: false });
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageW = 210, pageH = 297;
+      const imgH = (canvas.height * pageW) / canvas.width;
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position -= pageH;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, pageW, imgH);
+        heightLeft -= pageH;
+      }
+      const base = (title ?? S.title).replace(/[\\/:*?"<>|]/g, '');
+      pdf.save(`${base} - ${birthInfo.name}.pdf`);
+    } catch {
+      // Raster/library failure is rare; fall back to the browser print dialog.
+      window.print();
+    }
+    setPdfBusy(false);
+  }
 
   async function generate() {
     setError('');
@@ -132,6 +181,9 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) { elements.push(<div key={key++} className='h-3' />); continue; }
+      // Markdown horizontal rules (---, ***, ___) render as literal dashes —
+      // drop them so no stray divider shows between paragraphs.
+      if (/^([-*_])\1{2,}$/.test(trimmed)) continue;
       const hMatch = trimmed.match(/^(#{1,3})\s+(.+)/);
       if (hMatch) {
         elements.push(<h2 key={key++} className='font-cinzel font-bold text-base mt-6 mb-2 pb-1'
@@ -226,9 +278,47 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
           {doneAll && (
             <div className='mt-4 pt-4 text-center no-print' style={{ borderTop: '1px solid rgba(201,168,76,0.2)' }}>
               <p className='text-xs mb-3' style={{ color: 'var(--gold-dim)' }}>✨ {S.done(themes.length)}</p>
-              <button className='btn-gold' onClick={() => window.print()}>{S.pdf}</button>
+              <button className='btn-gold' onClick={downloadPdf} disabled={pdfBusy}>
+                {pdfBusy ? S.pdfBusy : S.pdf}
+              </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Off-screen purple report captured for the one-click PDF download. */}
+      {doneAll && (
+        <div aria-hidden style={{ position: 'absolute', left: '-99999px', top: 0, pointerEvents: 'none' }}>
+          <div ref={pdfRef} style={{
+            width: '794px', background: PDF_PURPLE, padding: '52px 44px',
+            fontFamily: '"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif', color: PDF_TEXT,
+          }}>
+            <div style={{ textAlign: 'center', paddingBottom: '22px', marginBottom: '28px', borderBottom: `2px solid ${PDF_BOX_BORDER}` }}>
+              <p style={{ fontSize: '12px', letterSpacing: '0.28em', color: PDF_GOLD, margin: 0 }}>✦ {(title ?? S.title).toUpperCase()} ✦</p>
+              <p style={{ fontSize: '26px', fontWeight: 700, color: PDF_GOLD, margin: '10px 0 4px' }}>{birthInfo.name}</p>
+              <p style={{ fontSize: '12px', color: PDF_MUTED, margin: 0 }}>{birthInfo.date} · {birthInfo.time} · {birthInfo.place}</p>
+              <div style={{ display: 'inline-block', textAlign: 'left', marginTop: '20px', padding: '14px 22px', borderRadius: '12px', background: PDF_BOX_BG, border: `1px solid ${PDF_BOX_BORDER}` }}>
+                <p style={{ fontSize: '10px', letterSpacing: '0.2em', textAlign: 'center', color: PDF_GOLD, margin: '0 0 8px' }}>✦ {S.toc} ✦</p>
+                {themes.map((t, i) => (
+                  <p key={t.id} style={{ fontSize: '12px', margin: '0 0 3px', color: PDF_TEXT }}>
+                    <span style={{ color: PDF_GOLD }}>{i + 1}.</span> {t.icon} {t.name}
+                  </p>
+                ))}
+              </div>
+            </div>
+            {sections.map(({ theme, text }, idx) => (
+              <div key={theme.id} style={{
+                marginBottom: '22px', padding: '26px 28px', borderRadius: '16px',
+                background: PDF_BOX_BG, border: `1px solid ${PDF_BOX_BORDER}`,
+              }}>
+                <h2 style={{ fontSize: '19px', fontWeight: 700, color: PDF_GOLD, margin: '0 0 16px', paddingBottom: '12px', borderBottom: `1px solid ${PDF_BOX_BORDER}` }}>
+                  {theme.icon} {idx + 1}. {theme.name}
+                </h2>
+                <div className='pdf-prose'>{formatInterpretation(text)}</div>
+              </div>
+            ))}
+            <p style={{ textAlign: 'center', fontSize: '11px', color: PDF_MUTED, marginTop: '10px' }}>✦ Jyoti — Vedic Astrology ✦</p>
+          </div>
         </div>
       )}
     </div>
