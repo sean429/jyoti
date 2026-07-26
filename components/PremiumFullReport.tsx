@@ -101,52 +101,39 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
         import('html2canvas'),
         import('jspdf'),
       ]);
-      const canvas = await html2canvas(node, { scale: 2, backgroundColor: PDF_PURPLE, useCORS: true, logging: false });
-      const scale = canvas.height / node.offsetHeight; // css px -> canvas px
-
-      // Cut only just after a paragraph, never through a line and never right
-      // after a chapter heading — so no sentence is sliced and no heading is
-      // stranded at a page bottom (it travels to the next page with its text).
-      const nodeTop = node.getBoundingClientRect().top;
-      const boundaries = [0];
-      node.querySelectorAll('p').forEach(el => {
-        const b = (el.getBoundingClientRect().bottom - nodeTop) * scale;
-        if (b > 0 && b <= canvas.height) boundaries.push(b);
-      });
-      boundaries.push(canvas.height);
-      const cuts = Array.from(new Set(boundaries)).sort((a, b) => a - b);
-
       const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageW = 210, pageH = 297, margin = 12;
-      const contentWmm = pageW - margin * 2;
-      const pxPerMm = canvas.width / contentWmm;
-      const usablePx = (pageH - margin * 2) * pxPerMm; // canvas px that fit one page
+      const pageW = 210, pageH = 297, mx = 14, myTop = 16, myBot = 16;
+      const contentW = pageW - mx * 2;
+      const contentBottom = pageH - myBot;
 
-      let startPx = 0;
-      let first = true;
-      while (startPx < canvas.height - 1) {
-        const maxEnd = startPx + usablePx;
-        // largest block-bottom that fits; if none fits, a single block is taller
-        // than a page, so fall back to a hard cut at the page height.
-        let endPx = cuts.filter(c => c > startPx && c <= maxEnd).pop() ?? maxEnd;
-        if (endPx <= startPx) endPx = maxEnd;
-        const sliceH = Math.min(endPx - startPx, canvas.height - startPx);
+      const cover = node.querySelector<HTMLElement>('[data-pdf-cover]')!;
+      const refW = cover.offsetWidth;         // every block shares this column width
+      const pxToMm = contentW / refW;
+      const fillPage = () => { pdf.setFillColor(PDF_PURPLE); pdf.rect(0, 0, pageW, pageH, 'F'); };
+      const shot = async (el: HTMLElement) => {
+        const c = await html2canvas(el, { scale: 2, backgroundColor: PDF_PURPLE, useCORS: true, logging: false });
+        return c.toDataURL('image/jpeg', 0.92);
+      };
 
-        const slice = document.createElement('canvas');
-        slice.width = canvas.width;
-        slice.height = sliceH;
-        const ctx = slice.getContext('2d')!;
-        ctx.fillStyle = PDF_PURPLE;
-        ctx.fillRect(0, 0, slice.width, slice.height);
-        ctx.drawImage(canvas, 0, startPx, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      // Page 1 holds the cover and its table of contents, nothing else.
+      fillPage();
+      pdf.addImage(await shot(cover), 'JPEG', mx, myTop, contentW, cover.offsetHeight * pxToMm);
 
-        if (!first) pdf.addPage();
-        first = false;
-        // Fill the whole page purple so the margins match the report.
-        pdf.setFillColor(PDF_PURPLE);
-        pdf.rect(0, 0, pageW, pageH, 'F');
-        pdf.addImage(slice.toDataURL('image/jpeg', 0.92), 'JPEG', margin, margin, contentWmm, sliceH / pxPerMm);
-        startPx = endPx;
+      // Chapters flow from page 2. Each heading/paragraph is placed whole: if it
+      // would cross the bottom margin it moves to the next page intact, so text
+      // never bleeds into the margin and no line is sliced. A heading also keeps
+      // company with the paragraph after it instead of sitting alone at the foot.
+      const blocks = Array.from(node.querySelectorAll<HTMLElement>('[data-pdf-body] h2, [data-pdf-body] p'));
+      let cursor = Infinity; // force a fresh page before the first block
+      for (let i = 0; i < blocks.length; i++) {
+        const el = blocks[i];
+        const h = el.offsetHeight * pxToMm;
+        const isHeading = el.tagName === 'H2';
+        const nextH = isHeading && blocks[i + 1] ? blocks[i + 1].offsetHeight * pxToMm : 0;
+        const needed = h + nextH + (isHeading ? 2 : 0);
+        if (cursor + needed > contentBottom) { pdf.addPage(); fillPage(); cursor = myTop; }
+        pdf.addImage(await shot(el), 'JPEG', mx, cursor, contentW, h);
+        cursor += h + (isHeading ? 3 : 5);
       }
       const base = (title ?? S.title).replace(/[\\/:*?"<>|]/g, '');
       pdf.save(`${base} - ${birthInfo.name}.pdf`);
@@ -325,28 +312,30 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
             width: '794px', background: PDF_PURPLE, padding: '52px 44px',
             fontFamily: '"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif', color: PDF_TEXT,
           }}>
-            <div style={{ textAlign: 'center', paddingBottom: '22px', marginBottom: '28px', borderBottom: `2px solid ${PDF_BOX_BORDER}` }}>
-              <p style={{ fontSize: '12px', letterSpacing: '0.28em', color: PDF_GOLD, margin: 0 }}>✦ {(title ?? S.title).toUpperCase()} ✦</p>
-              <p style={{ fontSize: '26px', fontWeight: 700, color: PDF_GOLD, margin: '10px 0 4px' }}>{birthInfo.name}</p>
-              <p style={{ fontSize: '12px', color: PDF_MUTED, margin: 0 }}>{birthInfo.date} · {birthInfo.time} · {birthInfo.place}</p>
-              <div style={{ display: 'inline-block', textAlign: 'left', marginTop: '20px', padding: '14px 22px', borderRadius: '12px', background: PDF_BOX_BG, border: `1px solid ${PDF_BOX_BORDER}` }}>
-                <p style={{ fontSize: '10px', letterSpacing: '0.2em', textAlign: 'center', color: PDF_GOLD, margin: '0 0 8px' }}>✦ {S.toc} ✦</p>
+            <div data-pdf-cover style={{ textAlign: 'center', paddingTop: '60px' }}>
+              <p style={{ fontSize: '13px', letterSpacing: '0.3em', color: PDF_GOLD, margin: 0 }}>✦ {(title ?? S.title).toUpperCase()} ✦</p>
+              <p style={{ fontSize: '30px', fontWeight: 700, color: PDF_GOLD, margin: '18px 0 6px' }}>{birthInfo.name}</p>
+              <p style={{ fontSize: '13px', color: PDF_MUTED, margin: '0 0 40px' }}>{birthInfo.date} · {birthInfo.time} · {birthInfo.place}</p>
+              <div style={{ display: 'inline-block', textAlign: 'left', padding: '22px 34px', borderRadius: '14px', background: PDF_BOX_BG, border: `1px solid ${PDF_BOX_BORDER}` }}>
+                <p style={{ fontSize: '11px', letterSpacing: '0.24em', textAlign: 'center', color: PDF_GOLD, margin: '0 0 14px' }}>✦ {S.toc} ✦</p>
                 {themes.map((t, i) => (
-                  <p key={t.id} style={{ fontSize: '12px', margin: '0 0 3px', color: PDF_TEXT }}>
+                  <p key={t.id} style={{ fontSize: '14px', margin: '0 0 8px', color: PDF_TEXT }}>
                     <span style={{ color: PDF_GOLD }}>{i + 1}.</span> {t.icon} {t.name}
                   </p>
                 ))}
               </div>
             </div>
-            {sections.map(({ theme, text }, idx) => (
-              <div key={theme.id} style={{ marginBottom: '30px' }}>
-                <h2 style={{ fontSize: '19px', fontWeight: 700, color: PDF_GOLD, margin: '0 0 16px', paddingBottom: '10px', borderBottom: `1.5px solid ${PDF_BOX_BORDER}` }}>
-                  {theme.icon} {idx + 1}. {theme.name}
-                </h2>
-                <div className='pdf-prose'>{formatInterpretation(text)}</div>
-              </div>
-            ))}
-            <p style={{ textAlign: 'center', fontSize: '11px', color: PDF_MUTED, marginTop: '10px' }}>✦ Jyoti — Vedic Astrology ✦</p>
+            <div data-pdf-body>
+              {sections.map(({ theme, text }, idx) => (
+                <div key={theme.id} style={{ marginBottom: '30px' }}>
+                  <h2 style={{ fontSize: '19px', fontWeight: 700, color: PDF_GOLD, margin: '0 0 16px', paddingBottom: '10px', borderBottom: `1.5px solid ${PDF_BOX_BORDER}` }}>
+                    {theme.icon} {idx + 1}. {theme.name}
+                  </h2>
+                  <div className='pdf-prose'>{formatInterpretation(text)}</div>
+                </div>
+              ))}
+              <p style={{ textAlign: 'center', fontSize: '11px', color: PDF_MUTED, marginTop: '10px' }}>✦ Jyoti — Vedic Astrology ✦</p>
+            </div>
           </div>
         </div>
       )}
