@@ -468,7 +468,7 @@ Response structure:
 ${premiumBlock}
 Everything must be derived from the chart payload above. Keep technical citations to the rare plain-language anchors allowed by the Voice rules — the reader should feel understood, not lectured.
 
-${lang === 'ko' ? 'Write your entire response in Korean only.' : lang === 'zh' ? 'Write your entire response in Simplified Chinese (zh-CN) only.' : 'Write your entire response in English only.'}`;
+${lang === 'ko' ? 'Write your entire response in pure Korean (Hangul) only. Do NOT insert any Chinese characters (漢字/汉字) or Japanese kana — if a Sino-Korean word would normally use Hanja, spell it in Hangul instead. Every single character must be Korean, standard punctuation, or an emoji.' : lang === 'zh' ? 'Write your entire response in Simplified Chinese (zh-CN) only.' : 'Write your entire response in English only. Do not insert Korean or Chinese characters.'}`;
 }
 
 function verifyPremiumToken(token: string): { themes: string[]; exp: number } {

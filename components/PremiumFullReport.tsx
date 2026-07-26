@@ -104,11 +104,12 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
       const canvas = await html2canvas(node, { scale: 2, backgroundColor: PDF_PURPLE, useCORS: true, logging: false });
       const scale = canvas.height / node.offsetHeight; // css px -> canvas px
 
-      // Cut only at the bottoms of whole blocks (paragraphs, headings, chapter
-      // boxes), never through a line — so no paragraph is sliced mid-sentence.
+      // Cut only just after a paragraph, never through a line and never right
+      // after a chapter heading — so no sentence is sliced and no heading is
+      // stranded at a page bottom (it travels to the next page with its text).
       const nodeTop = node.getBoundingClientRect().top;
       const boundaries = [0];
-      node.querySelectorAll('p, h2, [data-pdf-box]').forEach(el => {
+      node.querySelectorAll('p').forEach(el => {
         const b = (el.getBoundingClientRect().bottom - nodeTop) * scale;
         if (b > 0 && b <= canvas.height) boundaries.push(b);
       });
@@ -338,11 +339,8 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
               </div>
             </div>
             {sections.map(({ theme, text }, idx) => (
-              <div key={theme.id} data-pdf-box style={{
-                marginBottom: '22px', padding: '26px 28px', borderRadius: '16px',
-                background: PDF_BOX_BG, border: `1px solid ${PDF_BOX_BORDER}`,
-              }}>
-                <h2 style={{ fontSize: '19px', fontWeight: 700, color: PDF_GOLD, margin: '0 0 16px', paddingBottom: '12px', borderBottom: `1px solid ${PDF_BOX_BORDER}` }}>
+              <div key={theme.id} style={{ marginBottom: '30px' }}>
+                <h2 style={{ fontSize: '19px', fontWeight: 700, color: PDF_GOLD, margin: '0 0 16px', paddingBottom: '10px', borderBottom: `1.5px solid ${PDF_BOX_BORDER}` }}>
                   {theme.icon} {idx + 1}. {theme.name}
                 </h2>
                 <div className='pdf-prose'>{formatInterpretation(text)}</div>
