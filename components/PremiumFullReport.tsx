@@ -101,39 +101,50 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
         import('html2canvas'),
         import('jspdf'),
       ]);
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageW = 210, pageH = 297, mx = 14, myTop = 16, myBot = 16;
-      const contentW = pageW - mx * 2;
-      const contentBottom = pageH - myBot;
+      // Capture the whole report ONCE so every line renders correctly (per-block
+      // capture clipped line bottoms). Then slice it only at paragraph bottoms.
+      const canvas = await html2canvas(node, { scale: 2, backgroundColor: PDF_PURPLE, useCORS: true, logging: false });
+      const scale = canvas.height / node.offsetHeight; // css px -> canvas px
+      const nodeTop = node.getBoundingClientRect().top;
+      const yOf = (el: Element) => (el.getBoundingClientRect().bottom - nodeTop) * scale;
 
       const cover = node.querySelector<HTMLElement>('[data-pdf-cover]')!;
-      const refW = cover.offsetWidth;         // every block shares this column width
-      const pxToMm = contentW / refW;
-      const fillPage = () => { pdf.setFillColor(PDF_PURPLE); pdf.rect(0, 0, pageW, pageH, 'F'); };
-      const shot = async (el: HTMLElement) => {
-        const c = await html2canvas(el, { scale: 2, backgroundColor: PDF_PURPLE, useCORS: true, logging: false });
-        return c.toDataURL('image/jpeg', 0.92);
+      const coverBottom = yOf(cover);
+      // Cut only after a paragraph (not a heading) so lines stay whole and a
+      // heading always travels onto the next page with the paragraph beneath it.
+      const cuts = Array.from(node.querySelectorAll('[data-pdf-body] p'))
+        .map(yOf).filter(y => y > coverBottom && y <= canvas.height)
+        .sort((a, b) => a - b);
+      cuts.push(canvas.height);
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageW = 210, pageH = 297, margin = 16;
+      const contentW = pageW - margin * 2;
+      const pxPerMm = canvas.width / contentW;
+      const usablePx = (pageH - margin * 2) * pxPerMm;
+
+      const place = (fromPx: number, toPx: number, firstPage: boolean) => {
+        const h = toPx - fromPx;
+        const slice = document.createElement('canvas');
+        slice.width = canvas.width; slice.height = h;
+        const ctx = slice.getContext('2d')!;
+        ctx.fillStyle = PDF_PURPLE; ctx.fillRect(0, 0, slice.width, slice.height);
+        ctx.drawImage(canvas, 0, fromPx, canvas.width, h, 0, 0, canvas.width, h);
+        if (!firstPage) pdf.addPage();
+        pdf.setFillColor(PDF_PURPLE); pdf.rect(0, 0, pageW, pageH, 'F');
+        pdf.addImage(slice.toDataURL('image/jpeg', 0.94), 'JPEG', margin, margin, contentW, h / pxPerMm);
       };
 
-      // Page 1 holds the cover and its table of contents, nothing else.
-      fillPage();
-      pdf.addImage(await shot(cover), 'JPEG', mx, myTop, contentW, cover.offsetHeight * pxToMm);
-
-      // Chapters flow from page 2. Each heading/paragraph is placed whole: if it
-      // would cross the bottom margin it moves to the next page intact, so text
-      // never bleeds into the margin and no line is sliced. A heading also keeps
-      // company with the paragraph after it instead of sitting alone at the foot.
-      const blocks = Array.from(node.querySelectorAll<HTMLElement>('[data-pdf-body] h2, [data-pdf-body] p'));
-      let cursor = Infinity; // force a fresh page before the first block
-      for (let i = 0; i < blocks.length; i++) {
-        const el = blocks[i];
-        const h = el.offsetHeight * pxToMm;
-        const isHeading = el.tagName === 'H2';
-        const nextH = isHeading && blocks[i + 1] ? blocks[i + 1].offsetHeight * pxToMm : 0;
-        const needed = h + nextH + (isHeading ? 2 : 0);
-        if (cursor + needed > contentBottom) { pdf.addPage(); fillPage(); cursor = myTop; }
-        pdf.addImage(await shot(el), 'JPEG', mx, cursor, contentW, h);
-        cursor += h + (isHeading ? 3 : 5);
+      // Page 1: the cover and table of contents alone.
+      place(0, coverBottom, true);
+      // Chapters from page 2, each page filled up to the last paragraph that fits.
+      let startPx = coverBottom;
+      while (startPx < canvas.height - 1) {
+        const maxEnd = startPx + usablePx;
+        let endPx = cuts.filter(c => c > startPx && c <= maxEnd).pop() ?? maxEnd;
+        if (endPx <= startPx) endPx = Math.min(maxEnd, canvas.height);
+        place(startPx, Math.min(endPx, canvas.height), false);
+        startPx = endPx;
       }
       const base = (title ?? S.title).replace(/[\\/:*?"<>|]/g, '');
       pdf.save(`${base} - ${birthInfo.name}.pdf`);
@@ -312,16 +323,21 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
             width: '794px', background: PDF_PURPLE, padding: '52px 44px',
             fontFamily: '"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif', color: PDF_TEXT,
           }}>
-            <div data-pdf-cover style={{ textAlign: 'center', paddingTop: '60px' }}>
-              <p style={{ fontSize: '13px', letterSpacing: '0.3em', color: PDF_GOLD, margin: 0 }}>✦ {(title ?? S.title).toUpperCase()} ✦</p>
-              <p style={{ fontSize: '30px', fontWeight: 700, color: PDF_GOLD, margin: '18px 0 6px' }}>{birthInfo.name}</p>
-              <p style={{ fontSize: '13px', color: PDF_MUTED, margin: '0 0 40px' }}>{birthInfo.date} · {birthInfo.time} · {birthInfo.place}</p>
-              <div style={{ display: 'inline-block', textAlign: 'left', padding: '22px 34px', borderRadius: '14px', background: PDF_BOX_BG, border: `1px solid ${PDF_BOX_BORDER}` }}>
-                <p style={{ fontSize: '11px', letterSpacing: '0.24em', textAlign: 'center', color: PDF_GOLD, margin: '0 0 14px' }}>✦ {S.toc} ✦</p>
+            <div data-pdf-cover style={{ textAlign: 'center', paddingTop: '70px' }}>
+              <p style={{ fontSize: '15px', letterSpacing: '0.34em', color: PDF_GOLD, margin: 0 }}>✦ {(title ?? S.title).toUpperCase()} ✦</p>
+              <p style={{ fontSize: '38px', fontWeight: 700, color: PDF_GOLD, margin: '22px 0 8px' }}>{birthInfo.name}</p>
+              <p style={{ fontSize: '14px', color: PDF_MUTED, margin: '0 0 52px' }}>{birthInfo.date} · {birthInfo.time} · {birthInfo.place}</p>
+              <div style={{ textAlign: 'left', padding: '32px 40px', borderRadius: '16px', background: PDF_BOX_BG, border: `1px solid ${PDF_BOX_BORDER}` }}>
+                <p style={{ fontSize: '14px', letterSpacing: '0.28em', textAlign: 'center', color: PDF_GOLD, margin: '0 0 24px' }}>✦ {S.toc} ✦</p>
                 {themes.map((t, i) => (
-                  <p key={t.id} style={{ fontSize: '14px', margin: '0 0 8px', color: PDF_TEXT }}>
-                    <span style={{ color: PDF_GOLD }}>{i + 1}.</span> {t.icon} {t.name}
-                  </p>
+                  <div key={t.id} style={{
+                    display: 'flex', alignItems: 'baseline', gap: '14px',
+                    fontSize: '20px', padding: '13px 6px', color: PDF_TEXT,
+                    borderBottom: i < themes.length - 1 ? `1px solid ${PDF_BOX_BORDER}` : 'none',
+                  }}>
+                    <span style={{ color: PDF_GOLD, fontWeight: 700, minWidth: '26px' }}>{i + 1}</span>
+                    <span>{t.icon} {t.name}</span>
+                  </div>
                 ))}
               </div>
             </div>

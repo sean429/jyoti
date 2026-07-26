@@ -218,6 +218,10 @@ h1, h2, h3, .font-cinzel { font-family: 'Cinzel', serif; }
 .ai-prose strong { color: var(--gold-light); font-weight: 600; }
 .ai-prose em { color: var(--text-muted); }
 
+/* PDF prose — generous leading so no line is cramped or clipped in the export. */
+.pdf-prose p { font-size: 15px !important; line-height: 2.05 !important; margin-bottom: 0.7rem !important; padding-bottom: 2px; }
+.pdf-prose h2 { font-size: 16px !important; line-height: 1.5 !important; margin-top: 1.4rem; margin-bottom: 0.6rem; }
+
 @keyframes spin-slow {
   to { transform: rotate(360deg); }
 }
