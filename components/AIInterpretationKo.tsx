@@ -19,7 +19,7 @@ const LOADING_STAGES = [
   '🏠 하우스 배치를 분석하는 중...',
   '🌙 다샤의 흐름을 확인하는 중...',
   '📜 나크샤트라를 읽는 중...',
-  '✍️ 나니마가 해석을 적는 중...',
+  '✍️ 타라가 별을 읽는 중...',
 ];
 
 export default function AIInterpretationKo({ chart, birthInfo, theme, premiumToken }: Props) {
@@ -250,7 +250,7 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
                 <p className='font-cinzel text-sm mb-1.5' style={{ color: '#e9d5ff' }}>🔮 여기서부터가 진짜야</p>
                 <p className='text-xs mb-4' style={{ color: 'var(--text-muted)', maxWidth: '400px', lineHeight: 1.6 }}>
                   네 차트에 지금 만들어지고 있는 <b style={{ color: '#e9d5ff' }}>올해의 결정적 전환점</b>과,
-                  나니마가 꼭 해주고 싶은 <b style={{ color: '#e9d5ff' }}>구체적인 조언</b>은 프리미엄 심층 해석에서 전부 열려요.
+                  타라 언니가 꼭 해주고 싶은 <b style={{ color: '#e9d5ff' }}>구체적인 조언</b>은 프리미엄 심층 해석에서 전부 열려요.
                 </p>
                 <button
                   onClick={() => document.getElementById('jyoti-premium')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}

@@ -19,7 +19,7 @@ const LOADING_STAGES = [
   '🏠 正在分析宫位布局...',
   '🌙 正在确认大运流转...',
   '📜 正在解读纳克沙特拉...',
-  '✍️ 纳尼玛正在书写解读...',
+  '✍️ 塔拉正在读星...',
 ];
 
 export default function AIInterpretationZh({ chart, birthInfo, theme, premiumToken }: Props) {
@@ -245,7 +245,7 @@ export default function AIInterpretationZh({ chart, birthInfo, theme, premiumTok
                 style={{ background: 'linear-gradient(180deg, rgba(8,8,24,0) 0%, rgba(8,8,24,0.82) 40%)' }}>
                 <p className='font-cinzel text-sm mb-1.5' style={{ color: '#e9d5ff' }}>🔮 精彩的在后面</p>
                 <p className='text-xs mb-4' style={{ color: 'var(--text-muted)', maxWidth: '400px', lineHeight: 1.6 }}>
-                  你命盘中正在成形的<b style={{ color: '#e9d5ff' }}>今年关键转折</b>，以及纳尼玛想给你的<b style={{ color: '#e9d5ff' }}>具体建议</b>，都在高级深度解读中完整揭晓。
+                  你命盘中正在成形的<b style={{ color: '#e9d5ff' }}>今年关键转折</b>，以及塔拉想给你的<b style={{ color: '#e9d5ff' }}>具体建议</b>，都在高级深度解读中完整揭晓。
                 </p>
                 <button
                   onClick={() => document.getElementById('jyoti-premium')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}

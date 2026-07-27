@@ -143,7 +143,7 @@ export default function KoKundaliPage() {
   // is unavailable. Used by both the wallet and the referral card.
   function shareRef() {
     const url = `${location.origin}${location.pathname}?ref=${myRef}`;
-    const text = `나니마의 베딕 점성술 — 추천 코드 ${myRef} 로 열면 이용권 1장을 받아요\n${url}`;
+    const text = `타라의 베딕 점성술 — 추천 코드 ${myRef} 로 열면 이용권 1장을 받아요\n${url}`;
     if (navigator.share) { void navigator.share({ text }).catch(() => {}); return; }
     void navigator.clipboard.writeText(text).then(() => {
       setRefCopied(true);
@@ -822,7 +822,7 @@ export default function KoKundaliPage() {
                         {!fullReport && !loveReport && (
                         <div className="mb-4">
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
-                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>나니마에게 직접 묻기 {questionUnlocked ? '🔓' : '🔒'}</p>
+                            <p className="text-xs font-cinzel" style={{ color: 'var(--gold-dim)' }}>타라에게 직접 묻기 {questionUnlocked ? '🔓' : '🔒'}</p>
                             {!questionUnlocked && <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>프리미엄 이용권 1장으로 영구 해금</p>}
                           </div>
                           {questionUnlocked ? (
@@ -837,13 +837,13 @@ export default function KoKundaliPage() {
                                 style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.2)', color: 'var(--text)' }}
                               />
                               <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                                💡 최대한 구체적으로, 여러 질문은 번호를 매겨 적으면 나니마가 하나씩 짚어 답해줘요
+                                💡 최대한 구체적으로, 여러 질문은 번호를 매겨 적으면 타라가 하나씩 짚어 답해줘
                               </p>
                             </>
                           ) : (
                             <div className="p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px dashed rgba(201,168,76,0.3)' }}>
                               <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
-                                궁금한 것을 번호를 매겨 구체적으로 물어보면 나니마가 차트를 근거로 하나씩 답해줘요. 프리미엄 이용권 1장(₩3,900)으로 질문 기능이 영구 해금됩니다.
+                                궁금한 것을 번호를 매겨 구체적으로 물어보면 타라가 차트를 근거로 하나씩 답해줘. 프리미엄 이용권 1장(₩3,900)으로 질문 기능이 영구 해금됩니다.
                               </p>
                               <div className="flex flex-wrap gap-2 items-center">
                                 {credits.prem > 0 && (

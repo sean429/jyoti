@@ -19,7 +19,7 @@ const LOADING_STAGES = [
   'Mapping the house placements...',
   'Tracing the dasha currents...',
   'Reading the nakshatras...',
-  'Nanima is writing your reading...',
+  'Tara is reading your stars...',
 ];
 
 export default function AIInterpretation({ chart, birthInfo, theme, premiumToken }: Props) {
@@ -259,7 +259,7 @@ export default function AIInterpretation({ chart, birthInfo, theme, premiumToken
                 style={{ background: 'linear-gradient(180deg, rgba(8,8,24,0) 0%, rgba(8,8,24,0.82) 40%)' }}>
                 <p className="font-cinzel text-sm mb-1.5" style={{ color: '#e9d5ff' }}>🔮 The real part begins here</p>
                 <p className="text-xs mb-4" style={{ color: 'var(--text-muted)', maxWidth: '400px', lineHeight: 1.6 }}>
-                  The <b style={{ color: '#e9d5ff' }}>turning point taking shape in your chart this year</b> and Nanima's <b style={{ color: '#e9d5ff' }}>concrete advice</b> are fully revealed in the premium deep readings.
+                  The <b style={{ color: '#e9d5ff' }}>turning point taking shape in your chart this year</b> and Tara's <b style={{ color: '#e9d5ff' }}>concrete advice</b> are fully revealed in the premium deep readings.
                 </p>
                 <button
                   onClick={() => document.getElementById('jyoti-premium')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
