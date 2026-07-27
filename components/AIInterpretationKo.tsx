@@ -10,6 +10,8 @@ interface Props {
   birthInfo: { name: string; date: string; time: string; place: string; gender?: string };
   theme?: Theme;
   premiumToken?: string;
+  persona?: string;
+  personaName?: string;
 }
 
 // Staged loading theater — real steps happen server-side in one call, but
@@ -22,7 +24,7 @@ const LOADING_STAGES = [
   '✍️ 타라가 별을 읽는 중...',
 ];
 
-export default function AIInterpretationKo({ chart, birthInfo, theme, premiumToken }: Props) {
+export default function AIInterpretationKo({ chart, birthInfo, theme, premiumToken, persona = 'tara', personaName = '타라' }: Props) {
   const [interpretation, setInterpretation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -57,7 +59,7 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
   // Session cache: switching themes (or tabs) restores past readings for the
   // same chart instead of burning another API call. Cleared naturally when the
   // birth data changes (key includes it) or the browser session ends.
-  const cacheKey = `jyoti_interp_ko|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${birthInfo.gender ?? ''}|${themeKey}`;
+  const cacheKey = `jyoti_interp_ko|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${birthInfo.gender ?? ''}|${persona}|${themeKey}`;
 
   useEffect(() => {
     try {
@@ -81,7 +83,7 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
       try {
         const res = await fetch('/api/interpret', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chart, birthInfo, lang: 'ko', theme, premiumToken }),
+          body: JSON.stringify({ chart, birthInfo, lang: 'ko', theme, premiumToken, persona }),
         });
         const data = await res.json();
         if (res.ok && data.interpretation) {
@@ -198,7 +200,7 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
             </svg>
             <div className='absolute inset-0 flex items-center justify-center text-2xl'>🔮</div>
           </div>
-          <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>{LOADING_STAGES[stage]}</p>
+          <p className='font-cinzel text-sm' style={{ color: 'var(--gold)' }}>{stage === LOADING_STAGES.length - 1 ? `✍️ ${personaName}가 별을 읽는 중...` : LOADING_STAGES[stage]}</p>
           <p className='text-xs mt-1' style={{ color: 'var(--text-muted)' }}>{birthInfo.name}님의 우주적 청사진을 풀어냅니다</p>
           {todayCount !== null && todayCount >= 3 && (
             <p className='text-xs mt-1.5' style={{ color: 'var(--gold-dim)' }}>✨ 오늘 {todayCount + 1}번째 별을 읽고 있어요</p>
@@ -250,7 +252,7 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
                 <p className='font-cinzel text-sm mb-1.5' style={{ color: '#e9d5ff' }}>🔮 여기서부터가 진짜야</p>
                 <p className='text-xs mb-4' style={{ color: 'var(--text-muted)', maxWidth: '400px', lineHeight: 1.6 }}>
                   네 차트에 지금 만들어지고 있는 <b style={{ color: '#e9d5ff' }}>올해의 결정적 전환점</b>과,
-                  타라 언니가 꼭 해주고 싶은 <b style={{ color: '#e9d5ff' }}>구체적인 조언</b>은 프리미엄 심층 해석에서 전부 열려요.
+                  ${personaName} 언니가 꼭 해주고 싶은 <b style={{ color: '#e9d5ff' }}>구체적인 조언</b>은 프리미엄 심층 해석에서 전부 열려요.
                 </p>
                 <button
                   onClick={() => document.getElementById('jyoti-premium')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}

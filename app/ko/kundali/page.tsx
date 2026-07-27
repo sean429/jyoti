@@ -48,6 +48,14 @@ const THEMES = [
 
 type Theme = typeof THEMES[number];
 
+// Reader personas — the astrologer who reads for you. Default is 타라.
+const PERSONAS_KO = [
+  { id: 'tara',   name: '타라',   tag: '시크한 누나',     emoji: '🌙' },
+  { id: 'mira',   name: '미라',   tag: '다정한 누나',     emoji: '🌸' },
+  { id: 'nisha',  name: '니샤',   tag: '신비로운 누나',   emoji: '🔮' },
+  { id: 'nanima', name: '나니마', tag: '따뜻한 할머니',   emoji: '🪷' },
+] as const;
+
 // Premium paid themes — purchased on Groble, unlocked via /api/payment/claim (HMAC token)
 const PREMIUM_THEMES_KO = [
   { id: 'career', name: '직업·재물운', icon: '💼', d2: 10, desc: '직업과 재물운을 D1+D10 차트 기반으로 집중 분석합니다. 직업적 재능, 성공 분야, 재물 흐름, 현재 다샤의 재물운을 구체적으로 알려주세요.' },
@@ -99,6 +107,7 @@ export default function KoKundaliPage() {
   const [justUnlocked, setJustUnlocked] = useState(false);
   const [fullReport, setFullReport] = useState(false);
   const [loveReport, setLoveReport] = useState(false);
+  const [persona, setPersona] = useState('tara');
   const [myRef, setMyRef] = useState('');
   const [refNotice, setRefNotice] = useState('');
   const [refCopied, setRefCopied] = useState(false);
@@ -129,8 +138,16 @@ export default function KoKundaliPage() {
       if (r) localStorage.setItem('jyoti_ref', r);
       const mine = localStorage.getItem('jyoti_my_ref');
       if (mine) setMyRef(mine);
+      const p = localStorage.getItem('jyoti_persona');
+      if (p && PERSONAS_KO.some(x => x.id === p)) setPersona(p);
     } catch {}
   }, []);
+
+  function pickPersona(id: string) {
+    setPersona(id);
+    try { localStorage.setItem('jyoti_persona', id); } catch {}
+  }
+  const personaName = PERSONAS_KO.find(p => p.id === persona)?.name ?? '타라';
 
   const REF_NOTICE: Record<string, string> = {
     applied: '🎁 친구 추천이 확인되어 일반 이용권 1장이 추가됐어요',
@@ -557,6 +574,24 @@ export default function KoKundaliPage() {
                           <span className="ornament">AI 운세 해석 보기</span>
                         </h3>
                         <LiveCounter lang="ko" />
+                        {/* Persona picker — who reads your chart */}
+                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.06)', border: '1px solid rgba(167,139,250,0.2)' }}>
+                          <p className="text-xs font-cinzel mb-2" style={{ color: '#c4b5fd' }}>✦ 내 점성술사 고르기</p>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                            {PERSONAS_KO.map(p => (
+                              <button key={p.id} onClick={() => pickPersona(p.id)}
+                                className="px-2 py-2 rounded-lg text-center transition-all"
+                                style={{
+                                  background: persona === p.id ? 'rgba(167,139,250,0.22)' : 'rgba(255,255,255,0.03)',
+                                  border: persona === p.id ? '1px solid rgba(167,139,250,0.6)' : '1px solid rgba(167,139,250,0.15)',
+                                }}>
+                                <div className="text-lg leading-none mb-1">{p.emoji}</div>
+                                <div className="text-xs font-cinzel font-bold" style={{ color: persona === p.id ? '#e9d5ff' : 'var(--text)' }}>{p.name}</div>
+                                <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{p.tag}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         {/* Theme picker for AI */}
                         {!fullReport && !loveReport && (
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.15)' }}>
@@ -874,6 +909,7 @@ export default function KoKundaliPage() {
                             }}
                             themes={LOVE_THEMES_KO}
                             premiumToken={premiumToken}
+                            persona={persona}
                             lang='ko'
                             title='AI 베딕 연애 집중 리포트'
                           />
@@ -889,6 +925,7 @@ export default function KoKundaliPage() {
                             }}
                             themes={PREMIUM_THEMES_KO}
                             premiumToken={premiumToken}
+                            persona={persona}
                             lang='ko'
                           />
                         ) : (
@@ -903,6 +940,8 @@ export default function KoKundaliPage() {
                           }}
                           theme={aiTheme}
                           premiumToken={premiumToken || undefined}
+                          persona={persona}
+                          personaName={personaName}
                         />
                         )}
                       </div>

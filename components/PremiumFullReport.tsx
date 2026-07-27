@@ -20,6 +20,7 @@ interface Props {
   premiumToken: string;
   lang: 'ko' | 'zh' | 'en';
   title?: string; // cover title override, e.g. the love report's own name
+  persona?: string;
 }
 
 const STRINGS = {
@@ -61,11 +62,11 @@ const STRINGS = {
   },
 } as const;
 
-export default function PremiumFullReport({ chart, birthInfo, themes, premiumToken, lang, title }: Props) {
+export default function PremiumFullReport({ chart, birthInfo, themes, premiumToken, lang, title, persona = 'tara' }: Props) {
   // Session cache: finished sections survive tab switches and page reloads for
   // the same chart, so buyers never pay the 3-5 minute generation twice.
   // The theme-id list keeps different reports (premium vs love) apart.
-  const cacheKey = `jyoti_fullreport_${lang}|${themes.map(t => t.id).join('.')}|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${birthInfo.gender ?? ''}`;
+  const cacheKey = `jyoti_fullreport_${lang}|${themes.map(t => t.id).join('.')}|${birthInfo.name}|${birthInfo.date}|${birthInfo.time}|${birthInfo.place}|${birthInfo.gender ?? ''}|${persona}`;
   const [sections, setSections] = useState<{ theme: FTheme; text: string }[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -169,7 +170,7 @@ export default function PremiumFullReport({ chart, birthInfo, themes, premiumTok
           const res = await fetch('/api/interpret', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              chart, birthInfo, lang,
+              chart, birthInfo, lang, persona,
               theme: { name: t.name, desc: t.desc, d2: t.d2, premiumId: t.id },
               premiumToken,
             }),
