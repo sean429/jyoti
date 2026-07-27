@@ -679,7 +679,7 @@ export default function KoKundaliPage() {
                         </div>
 
                         {/* Premium themes */}
-                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
+                        <div id="jyoti-premium" className="mb-4 p-3 rounded-lg" style={{ scrollMarginTop: '80px', background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                             <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 프리미엄 심층 해석</p>
                             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>단품 ₩3,900 · 전체 ₩14,900</p>

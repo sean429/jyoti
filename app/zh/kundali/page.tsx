@@ -627,7 +627,7 @@ export default function ZhKundaliPage() {
                         </div>
 
                         {/* Premium themes */}
-                        <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
+                        <div id="jyoti-premium" className="mb-4 p-3 rounded-lg" style={{ scrollMarginTop: '80px', background: 'rgba(107,33,168,0.08)', border: '1px solid rgba(167,139,250,0.25)' }}>
                           <div className="flex items-center justify-between mb-2 flex-wrap gap-1">
                             <p className="text-xs font-cinzel" style={{ color: '#c4b5fd' }}>💎 高级深度解读</p>
                             <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>单项 ₩3,900 · 全部 ₩14,900</p>
