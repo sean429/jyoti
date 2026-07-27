@@ -390,12 +390,12 @@ This is a free preview of the paid premium reading. Ignore the default response 
 * The answers readers want most (concrete timing, the list of fitting fields, the spouse profile, weak spots, this year's strategy, and the like) must NOT be answered — only signal that the full report covers them.
 * Paragraph 3 (two sentences): preview what the full report will reveal so curiosity builds, then close with one short closing line in your established voice.
 * Use the budget: aim for 350–400 characters, not far less.`;
-  const FREE_BLOCK = `[Free summary reading — a rich personality portrait that ends on a hook]
-This is the free portion of the reading. It gives a full, satisfying portrait of WHO this person is, then stops right before the forward-looking payoff (this year's turning points, timing, and Tara's concrete advice), which belong to the paid deep reading. Completely ignore the default response structure (items 1–9) above and write only this:
-* No section headings — exactly 4 paragraphs: (1) first impression — the single strongest recurring theme of this chart, drawn vividly; (2) core disposition — the person's real strengths and the way they naturally move through life, anchored once in the chart in plain words; (3) the pattern that repeats — a soft truth about what they crave or avoid, framed as "this is how it tends to work"; (4) a bridge in your established voice: tell them that their chart clearly shows a turning point taking shape in this current period and that there are concrete things she wants them to do about it — but do NOT reveal what the turning point is, when it comes, or the advice. End on genuine curiosity, pausing right before the good part on purpose.
-* Each paragraph 3–4 full sentences. Aim for 800–1,000 characters including spaces (Korean-character count; other output languages equivalent). Never exceed 1,100. Always end on a complete sentence.
-* Keep the plain-language Voice rules (no jargon chains). Paragraphs 1–3 must feel complete and generous on their own — the reader should finish them feeling truly seen, not shortchanged. Only paragraph 4 is the teaser.
-* Do NOT actually give this year's timing, predictions, or any practical to-do list — those are the paid content the teaser points to. Never fabricate specifics you are about to withhold.`;
+  const FREE_BLOCK = `[Free summary reading — write a GENEROUS, full-length reading]
+This is the free summary reading. It must feel full and substantial — a warm, complete portrait, NOT a thin teaser. Completely ignore the default response structure (items 1–9) above and write only this:
+* No section headings — exactly 5 paragraphs: (1) first impression — the single strongest recurring theme of this chart, drawn vividly; (2) core disposition — the person's real strengths and the way they naturally move through life, anchored once in the chart in plain words; (3) the pattern that repeats — a soft truth about what they crave or avoid, framed as "this is how it tends to work"; (4) the current-period weather — what season of life they are in now (from the running dasha) and what it asks of them; (5) one small concrete thing they can try starting today, plus a warm closing line in your established voice.
+* Each paragraph 3–4 full sentences. Use the whole budget: aim for 1,100–1,400 characters including spaces (Korean-character count; other output languages equivalent). Never fall below 1,000 characters and never exceed 1,500. Always end on a complete sentence.
+* Keep the plain-language Voice rules (no jargon chains), but do NOT clip the reading short in the name of concision — richness of insight matters more here than brevity. Every paragraph should feel earned and specific to this chart.
+* You may include exactly one natural sentence noting that deeper area-by-area analysis (career, love, health, this year, family) lives in the premium readings.`;
   // Deep-dive themes get their bespoke block, the 15 std topics get the
   // generic single-topic block, and free requests get the summary block.
   const isGatedTheme = !!theme?.premiumId && PREMIUM_THEME_IDS.has(theme.premiumId);
@@ -797,9 +797,9 @@ export async function POST(req: NextRequest) {
     };
 
     let text = await generateOnce();
-    // The free personality portrait targets ~800-1,000 chars; a rare clipped
-    // generation gets one silent second chance and we keep the longer result.
-    if (!isGated && text.length < 700) {
+    // The free reading targets ~1,100-1,400 chars; a rare clipped generation
+    // gets one silent second chance and we keep the longer result.
+    if (!isGated && text.length < 1000) {
       try {
         const second = await generateOnce();
         if (second.length > text.length) text = second;

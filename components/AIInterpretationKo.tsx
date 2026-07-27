@@ -232,37 +232,43 @@ export default function AIInterpretationKo({ chart, birthInfo, theme, premiumTok
             <p className='font-cinzel font-bold text-lg' style={{ color: 'var(--gold-light)' }}>{birthInfo.name}님</p>
             <p className='text-xs mt-0.5' style={{ color: 'var(--text-muted)' }}>{birthInfo.date} · {birthInfo.place}</p>
           </div>
-          <div className='ai-prose'>{formatInterpretation(interpretation)}</div>
-          {!theme && !premiumToken && (
-            <div className='relative mt-2 no-print'>
-              <p className='text-center text-[11px] font-cinzel mb-3' style={{ color: 'var(--gold-dim)', letterSpacing: '0.1em' }}>─── 여기까지 무료 ───</p>
-              <div style={{ filter: 'blur(6.5px)', userSelect: 'none', pointerEvents: 'none' }} aria-hidden='true'>
-                {[0, 1].map(s => (
-                  <div key={s} className='mb-5'>
-                    <div className='h-3.5 mb-3 rounded' style={{ background: 'rgba(201,168,76,0.3)', width: '44%' }} />
-                    {[0, 1, 2, 3].map(i => (
-                      <div key={i} className='h-3 mb-2 rounded'
-                        style={{ background: 'rgba(240,235,224,0.15)', width: `${94 - ((s * 4 + i) * 7) % 26}%` }} />
-                    ))}
+          {(() => {
+            // Free general reading for a non-paying visitor: show the first
+            // paragraphs clear, then blur the real tail (this-period flow +
+            // advice) as the upsell hook. Premium/master token → full, unblurred.
+            const blurTail = !theme && !premiumToken;
+            if (!blurTail) return <div className='ai-prose'>{formatInterpretation(interpretation)}</div>;
+            const paras = interpretation.split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+            const clearN = Math.min(paras.length - 1, Math.max(3, Math.ceil(paras.length * 0.55)));
+            const clear = paras.slice(0, clearN).join('\n\n');
+            const rest = paras.slice(clearN).join('\n\n');
+            return (
+              <>
+                <div className='ai-prose'>{formatInterpretation(clear)}</div>
+                {rest && (
+                  <div className='relative mt-3 no-print'>
+                    <p className='text-center text-[11px] font-cinzel mb-3' style={{ color: 'var(--gold-dim)', letterSpacing: '0.1em' }}>─── 여기까지 무료 ───</p>
+                    <div className='ai-prose' aria-hidden='true' style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none', maxHeight: '260px', overflow: 'hidden' }}>
+                      {formatInterpretation(rest)}
+                    </div>
+                    <div className='absolute inset-0 flex flex-col items-center justify-end text-center px-5 pb-3'
+                      style={{ background: 'linear-gradient(180deg, rgba(8,8,24,0) 0%, rgba(8,8,24,0.88) 46%)' }}>
+                      <p className='font-cinzel text-sm mb-1.5' style={{ color: '#e9d5ff' }}>🔮 여기서부터가 진짜야</p>
+                      <p className='text-xs mb-4' style={{ color: 'var(--text-muted)', maxWidth: '400px', lineHeight: 1.6 }}>
+                        올해의 흐름과 <b style={{ color: '#e9d5ff' }}>결정적 시기</b>, {personaName} 언니의 <b style={{ color: '#e9d5ff' }}>구체적인 조언</b>은 프리미엄 심층 해석에서 전부 열려요.
+                      </p>
+                      <button
+                        onClick={() => document.getElementById('jyoti-premium')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                        className='px-5 py-2.5 rounded-lg text-sm font-cinzel font-bold'
+                        style={{ background: 'linear-gradient(135deg, #a855f7, #6b21a8)', color: '#fff', boxShadow: '0 4px 18px rgba(107,33,168,0.5)' }}>
+                        🔓 프리미엄으로 전체 보기
+                      </button>
+                    </div>
                   </div>
-                ))}
-              </div>
-              <div className='absolute inset-0 flex flex-col items-center justify-end text-center px-5 pb-2'
-                style={{ background: 'linear-gradient(180deg, rgba(8,8,24,0) 0%, rgba(8,8,24,0.82) 40%)' }}>
-                <p className='font-cinzel text-sm mb-1.5' style={{ color: '#e9d5ff' }}>🔮 여기서부터가 진짜야</p>
-                <p className='text-xs mb-4' style={{ color: 'var(--text-muted)', maxWidth: '400px', lineHeight: 1.6 }}>
-                  네 차트에 지금 만들어지고 있는 <b style={{ color: '#e9d5ff' }}>올해의 결정적 전환점</b>과,
-                  ${personaName} 언니가 꼭 해주고 싶은 <b style={{ color: '#e9d5ff' }}>구체적인 조언</b>은 프리미엄 심층 해석에서 전부 열려요.
-                </p>
-                <button
-                  onClick={() => document.getElementById('jyoti-premium')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className='px-5 py-2.5 rounded-lg text-sm font-cinzel font-bold'
-                  style={{ background: 'linear-gradient(135deg, #a855f7, #6b21a8)', color: '#fff', boxShadow: '0 4px 18px rgba(107,33,168,0.5)' }}>
-                  🔓 프리미엄으로 전체 보기
-                </button>
-              </div>
-            </div>
-          )}
+                )}
+              </>
+            );
+          })()}
           {isPreview && (
             <div className='relative mt-6 no-print' aria-hidden='true'>
               <div style={{ filter: 'blur(6px)', userSelect: 'none', pointerEvents: 'none' }}>
