@@ -19,7 +19,7 @@ const features = [
   {
     icon: '✨',
     title: 'AI 한국어 해석',
-    desc: 'Claude AI가 당신의 쿤달리를 분석해 성격, 재물, 건강, 인간관계까지 한국어로 상세히 해석해드립니다.',
+    desc: 'AI가 당신의 쿤달리를 분석해 성격, 재물, 건강, 인간관계까지 한국어로 상세히 해석해드립니다.',
   },
 ];
 
@@ -168,7 +168,7 @@ export default function KoHomePage() {
               {[
                 { step: '01', title: '생년월일 입력', desc: '태어난 날짜, 시간, 장소를 입력하세요. 태어난 시간이 없어도 괜찮습니다.' },
                 { step: '02', title: '차트 자동 계산', desc: '정밀한 천문 알고리즘으로 라히리 아야남사 기반의 사이드리얼 행성 위치를 계산합니다.' },
-                { step: '03', title: 'AI 한국어 해석', desc: 'Claude AI가 당신의 쿤달리를 분석해 성격, 운세, 현재 대운을 한국어로 해석합니다.' },
+                { step: '03', title: 'AI 한국어 해석', desc: 'AI가 당신의 쿤달리를 분석해 성격, 운세, 현재 대운을 한국어로 해석합니다.' },
               ].map(s => (
                 <div key={s.step} className="text-center">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 font-cinzel font-bold text-lg"
