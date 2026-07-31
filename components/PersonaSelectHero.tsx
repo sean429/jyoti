@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// Landing-page character select. The choice is stored in localStorage under
-// jyoti_persona, the same key the reading page reads, so a pick here carries
-// through and can still be changed there.
+// Landing character select — a big featured portrait of the chosen astrologer
+// with a strip of pickable thumbnails beneath. The choice is stored under
+// jyoti_persona (the same key the reading page reads), so it carries through.
 const PERSONAS = [
-  { id: 'tara',   name: '타라',   line: '"야, 딱 나오네."',           hue: '#b47bff' },
-  { id: 'mira',   name: '미라',   line: '"내가 다 챙겨줄게!"',        hue: '#f2a6cf' },
-  { id: 'rahu',   name: '라후',   line: '"이런 걸 숨기고 있었어?"',   hue: '#e0554e' },
-  { id: 'arka',   name: '아르카', line: '"쓸데없는 말은 안 한다."',   hue: '#7aa2f0' },
-  { id: 'nanima', name: '나니마', line: '"다 지나간단다."',           hue: '#e0d29a' },
+  { id: 'tara',   name: '타라',   line: '"야, 네 차트 보니까 딱 나오네."',   hue: '#b47bff' },
+  { id: 'mira',   name: '미라',   line: '"내가 옆에서 다 챙겨줄게!"',        hue: '#f2a6cf' },
+  { id: 'rahu',   name: '라후',   line: '"재밌네. 이런 걸 숨기고 있었어?"',  hue: '#e0554e' },
+  { id: 'arka',   name: '아르카', line: '"쓸데없는 말은 안 한다. 이거다."',  hue: '#7aa2f0' },
+  { id: 'nanima', name: '나니마', line: '"얘야, 이건 다 지나간단다."',       hue: '#e0d29a' },
 ];
 
 export default function PersonaSelectHero() {
@@ -32,55 +32,82 @@ export default function PersonaSelectHero() {
   const sel = PERSONAS.find(p => p.id === persona) ?? PERSONAS[0];
 
   return (
-    <div className="mt-4 mb-2">
-      <p className="text-sm font-cinzel mb-4" style={{ color: '#c4b5fd', letterSpacing: '0.18em' }}>
-        ✦ 당신의 점성술사를 고르세요 ✦
-      </p>
+    <div className="psel">
+      <p className="psel-eyebrow">✦ 당신의 점성술사를 고르세요 ✦</p>
 
-      <div className="mx-auto" style={{ maxWidth: '880px' }}>
-        <div className="pgrid">
-          {PERSONAS.map(p => {
-            const on = persona === p.id;
-            return (
-              <button key={p.id} onClick={() => pick(p.id)}
-                className="persona-card group relative rounded-xl overflow-hidden transition-all"
-                style={{
-                  border: on ? `1.5px solid ${p.hue}` : '1px solid rgba(167,139,250,0.18)',
-                  boxShadow: on ? `0 6px 26px -6px ${p.hue}` : 'none',
-                  transform: on ? 'translateY(-3px)' : 'none',
-                }}>
-                <div className="relative" style={{ aspectRatio: '5 / 7', background: '#0d0a1c' }}>
-                  <img src={`/personas/${p.id}.jpg`} alt={p.name}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    style={{ objectPosition: '50% 10%', filter: on ? 'none' : 'saturate(.9) brightness(.82)' }} />
-                  <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 52%, rgba(11,8,24,.88) 100%)' }} />
-                  {on && (
-                    <div className="absolute top-1.5 left-1/2 -translate-x-1/2 text-[9px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: '#f2d98a', color: '#0b0818', letterSpacing: '.12em' }}>선택됨</div>
-                  )}
-                </div>
-                <div className="px-1 py-2" style={{ background: on ? `color-mix(in srgb, ${p.hue} 22%, #141026)` : '#12102a' }}>
-                  <div className="font-cinzel font-bold text-sm" style={{ color: on ? '#fff' : '#e9d5ff' }}>{p.name}</div>
-                  <div className="text-[10px] leading-tight mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.line}</div>
-                </div>
-              </button>
-            );
-          })}
+      {/* Big featured portrait of the chosen astrologer */}
+      <div className="psel-stage" style={{ ['--hue' as string]: sel.hue }}>
+        <img key={sel.id} src={`/personas/${sel.id}_full.jpg`} alt={sel.name} className="psel-hero-img" />
+        <div className="psel-hero-grad" />
+        <div className="psel-hero-cap">
+          <div className="psel-hero-name">{sel.name}</div>
+          <div className="psel-hero-line">{sel.line}</div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-4 justify-center mt-7">
+      {/* Pick strip */}
+      <div className="psel-thumbs">
+        {PERSONAS.map(p => {
+          const on = persona === p.id;
+          return (
+            <button key={p.id} onClick={() => pick(p.id)} aria-label={p.name}
+              className={`psel-thumb${on ? ' on' : ''}`} style={{ ['--hue' as string]: p.hue }}>
+              <img src={`/personas/${p.id}.jpg`} alt={p.name} />
+              <span className="psel-thumb-name">{p.name}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="psel-cta">
         <Link href="/ko/kundali">
-          <span className="btn-gold text-base" style={{ display: 'inline-block', padding: '0.875rem 2.4rem', fontSize: '1rem' }}>
+          <span className="btn-gold" style={{ display: 'inline-block', padding: '0.95rem 2.6rem', fontSize: '1.05rem' }}>
             ✦ {sel.name}와 함께 내 별 읽기 ✦
           </span>
         </Link>
       </div>
 
       <style jsx>{`
-        .pgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-        @media (max-width: 780px) { .pgrid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 480px) { .pgrid { grid-template-columns: repeat(2, 1fr); } }
+        .psel { margin: 8px auto 0; }
+        .psel-eyebrow { font-size: 14px; letter-spacing: 0.2em; color: #c4b5fd;
+          font-family: var(--font-cinzel, serif); margin-bottom: 18px; }
+
+        .psel-stage {
+          position: relative; width: min(340px, 82vw); aspect-ratio: 4 / 5;
+          margin: 0 auto; border-radius: 20px; overflow: hidden;
+          border: 1.5px solid var(--hue);
+          box-shadow: 0 18px 60px -18px var(--hue), 0 0 0 1px rgba(0,0,0,.3) inset;
+          background: #0d0a1c;
+        }
+        .psel-hero-img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 8%;
+          display: block; animation: pfade .45s ease; }
+        @keyframes pfade { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: none; } }
+        .psel-hero-grad { position: absolute; inset: 0;
+          background: linear-gradient(180deg, transparent 45%, rgba(11,8,24,.92) 100%); }
+        .psel-hero-cap { position: absolute; left: 0; right: 0; bottom: 16px; text-align: center; }
+        .psel-hero-name { font-family: var(--font-cinzel, serif); font-weight: 700;
+          font-size: 30px; color: #fff; text-shadow: 0 2px 16px var(--hue); }
+        .psel-hero-line { font-size: 14px; color: #e9d5ff; margin-top: 4px; }
+
+        .psel-thumbs { display: flex; justify-content: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+        .psel-thumb { position: relative; padding: 0; border: none; background: transparent; cursor: pointer;
+          width: 76px; border-radius: 12px; overflow: hidden; transition: transform .18s;
+          outline: 2px solid transparent; }
+        .psel-thumb img { width: 100%; aspect-ratio: 5 / 7; object-fit: cover; object-position: 50% 8%;
+          display: block; border-radius: 12px; filter: saturate(.85) brightness(.72); transition: filter .2s; }
+        .psel-thumb-name { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center;
+          font-size: 11px; font-weight: 700; color: #efe9ff; text-shadow: 0 1px 4px #000; opacity: .85; }
+        .psel-thumb:hover { transform: translateY(-3px); }
+        .psel-thumb:hover img { filter: saturate(1) brightness(.95); }
+        .psel-thumb.on { outline-color: var(--hue); box-shadow: 0 6px 20px -6px var(--hue); }
+        .psel-thumb.on img { filter: none; }
+
+        .psel-cta { margin-top: 24px; }
+
+        @media (max-width: 480px) {
+          .psel-thumb { width: 58px; }
+          .psel-hero-name { font-size: 26px; }
+        }
       `}</style>
     </div>
   );
