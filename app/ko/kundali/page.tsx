@@ -50,10 +50,11 @@ type Theme = typeof THEMES[number];
 
 // Reader personas — the astrologer who reads for you. Default is 타라.
 const PERSONAS_KO = [
-  { id: 'tara',   name: '타라',   tag: '시크한 누나',     emoji: '🌙' },
-  { id: 'mira',   name: '미라',   tag: '다정한 누나',     emoji: '🌸' },
-  { id: 'nisha',  name: '니샤',   tag: '신비로운 누나',   emoji: '🔮' },
-  { id: 'nanima', name: '나니마', tag: '따뜻한 할머니',   emoji: '🪷' },
+  { id: 'tara',   name: '타라',   line: '"야, 딱 나오네."',           hue: '#b47bff' },
+  { id: 'mira',   name: '미라',   line: '"내가 다 챙겨줄게!"',        hue: '#f2a6cf' },
+  { id: 'rahu',   name: '라후',   line: '"이런 걸 숨기고 있었어?"',   hue: '#e0554e' },
+  { id: 'arka',   name: '아르카', line: '"쓸데없는 말은 안 한다."',   hue: '#7aa2f0' },
+  { id: 'nanima', name: '나니마', line: '"다 지나간단다."',           hue: '#e0d29a' },
 ] as const;
 
 // Premium paid themes — purchased on Groble, unlocked via /api/payment/claim (HMAC token)
@@ -574,22 +575,31 @@ export default function KoKundaliPage() {
                           <span className="ornament">AI 운세 해석 보기</span>
                         </h3>
                         <LiveCounter lang="ko" />
-                        {/* Persona picker — who reads your chart */}
+                        {/* Persona picker — choose the astrologer who reads your chart */}
                         <div className="mb-4 p-3 rounded-lg" style={{ background: 'rgba(107,33,168,0.06)', border: '1px solid rgba(167,139,250,0.2)' }}>
-                          <p className="text-xs font-cinzel mb-2" style={{ color: '#c4b5fd' }}>✦ 내 점성술사 고르기</p>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                            {PERSONAS_KO.map(p => (
+                          <p className="text-xs font-cinzel mb-2.5 text-center" style={{ color: '#c4b5fd', letterSpacing: '0.15em' }}>✦ 내 점성술사를 고르세요 ✦</p>
+                          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                            {PERSONAS_KO.map(p => {
+                              const on = persona === p.id;
+                              return (
                               <button key={p.id} onClick={() => pickPersona(p.id)}
-                                className="px-2 py-2 rounded-lg text-center transition-all"
-                                style={{
-                                  background: persona === p.id ? 'rgba(167,139,250,0.22)' : 'rgba(255,255,255,0.03)',
-                                  border: persona === p.id ? '1px solid rgba(167,139,250,0.6)' : '1px solid rgba(167,139,250,0.15)',
-                                }}>
-                                <div className="text-lg leading-none mb-1">{p.emoji}</div>
-                                <div className="text-xs font-cinzel font-bold" style={{ color: persona === p.id ? '#e9d5ff' : 'var(--text)' }}>{p.name}</div>
-                                <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{p.tag}</div>
+                                className="group relative rounded-xl overflow-hidden text-center transition-all"
+                                style={{ border: on ? `1.5px solid ${p.hue}` : '1px solid rgba(167,139,250,0.18)',
+                                  boxShadow: on ? `0 0 18px -4px ${p.hue}` : 'none', transform: on ? 'translateY(-2px)' : 'none' }}>
+                                <div className="relative" style={{ aspectRatio: '5 / 7', background: '#0d0a1c' }}>
+                                  <img src={`/personas/${p.id}.jpg`} alt={p.name}
+                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                    style={{ objectPosition: '50% 10%', filter: on ? 'none' : 'saturate(.95) brightness(.9)' }} />
+                                  <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 55%, rgba(11,8,24,.85) 100%)' }} />
+                                  {on && <div className="absolute top-1 left-1/2 -translate-x-1/2 text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: '#f2d98a', color: '#0b0818', letterSpacing: '.1em' }}>선택됨</div>}
+                                </div>
+                                <div className="px-1 py-1.5" style={{ background: on ? `color-mix(in srgb, ${p.hue} 22%, #141026)` : '#12102a' }}>
+                                  <div className="text-xs font-cinzel font-bold" style={{ color: on ? '#fff' : '#e9d5ff' }}>{p.name}</div>
+                                  <div className="text-[9.5px] leading-tight mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.line}</div>
+                                </div>
                               </button>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                         {/* Theme picker for AI */}
