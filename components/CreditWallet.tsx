@@ -55,7 +55,7 @@ export default function CreditWallet({ lang, credits, unlockedCount, refCode, on
 
   return (
     <div className="no-print" style={{
-      position: 'fixed', right: '12px', bottom: '16px', zIndex: 60,
+      position: 'fixed', left: '12px', bottom: '16px', zIndex: 60,
       minWidth: '190px', maxWidth: '240px',
       background: 'rgba(12,10,30,0.92)', backdropFilter: 'blur(8px)',
       border: '1px solid rgba(201,168,76,0.45)', borderRadius: '12px',
