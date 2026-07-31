@@ -1,4 +1,5 @@
 ﻿import Link from 'next/link';
+import PersonaSelectHero from '@/components/PersonaSelectHero';
 
 const features = [
   {
@@ -97,12 +98,8 @@ export default function KoHomePage() {
             당신이 태어난 순간, 우주는 이미 당신에게 속삭이고 있었습니다.
           </p>
 
-          <div className="flex flex-wrap gap-4 justify-center fade-in-up-delay-2">
-            <Link href="/ko/kundali">
-              <span className="btn-gold text-base" style={{ display: 'inline-block', padding: '0.875rem 2.5rem', fontSize: '1rem' }}>
-                ✦ 나의 쿤달리 차트 보기 ✦
-              </span>
-            </Link>
+          <div className="fade-in-up-delay-2">
+            <PersonaSelectHero />
           </div>
 
           <p className="mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
