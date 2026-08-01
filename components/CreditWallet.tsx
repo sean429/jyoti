@@ -1,8 +1,11 @@
 'use client';
 
+import { useState } from 'react';
+
 // Floating wallet pinned to the corner of the screen so buyers always see
 // how many credits they hold and how many themes they've unlocked.
 // Hidden when the visitor owns nothing, and excluded from printed reports.
+// Can be collapsed to a small 🎟 button so it never covers content.
 
 type Credits = { std: number; prem: number };
 
@@ -50,8 +53,24 @@ export default function CreditWallet({ lang, credits, unlockedCount, refCode, on
   onShare?: () => void;
 }) {
   const s = STRINGS[lang];
+  const [open, setOpen] = useState(true);
   const hasCredits = credits.std > 0 || credits.prem > 0;
   if (!hasCredits && unlockedCount === 0 && !refCode) return null;
+
+  // Collapsed: a small 🎟 button that reopens the wallet.
+  if (!open) {
+    return (
+      <button className="no-print" aria-label={s.title} onClick={() => setOpen(true)}
+        style={{
+          position: 'fixed', left: '12px', bottom: '16px', zIndex: 60,
+          width: '42px', height: '42px', borderRadius: '50%', fontSize: '18px', cursor: 'pointer',
+          background: 'rgba(12,10,30,0.92)', backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(201,168,76,0.45)', boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+        }}>
+        🎟
+      </button>
+    );
+  }
 
   return (
     <div className="no-print" style={{
@@ -61,9 +80,16 @@ export default function CreditWallet({ lang, credits, unlockedCount, refCode, on
       border: '1px solid rgba(201,168,76,0.45)', borderRadius: '12px',
       padding: '10px 12px', boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
     }}>
-      <p className="font-cinzel text-xs font-bold mb-1.5" style={{ color: 'var(--gold-light)' }}>
-        🎟 {s.title}
-      </p>
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="font-cinzel text-xs font-bold" style={{ color: 'var(--gold-light)' }}>
+          🎟 {s.title}
+        </p>
+        <button aria-label="닫기" onClick={() => setOpen(false)}
+          style={{ width: '20px', height: '20px', lineHeight: 1, fontSize: '11px', borderRadius: '50%',
+            color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer' }}>
+          ✕
+        </button>
+      </div>
       {refCode && (
         <div className="mb-2 pb-2" style={{ borderBottom: '1px solid rgba(201,168,76,0.2)' }}>
           <p className="text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>{s.invite}</p>
