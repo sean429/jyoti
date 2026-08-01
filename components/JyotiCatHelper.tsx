@@ -27,12 +27,15 @@ export default function JyotiCatHelper() {
       onMouseLeave={() => setHover(false)}>
       {open && (
         <div className="jc-bubble" role="status">
+          <button className="jc-close" aria-label="닫기"
+            onClick={() => { setPinned(false); setHover(false); }}>✕</button>
           <p className="jc-text">{TIPS[i]}</p>
           <span className="jc-next">톡 누르면 다음 ▸</span>
         </div>
       )}
       <button className="jc-cat" aria-label="조티냥에게 베딕 상식 물어보기"
         onClick={() => { setPinned(true); setI(v => (v + 1) % TIPS.length); }}>
+        <span className="jc-disc" />
         <img src="/jyoti-cat.png" alt="조티냥" />
         {!open && <span className="jc-hint">냥?</span>}
       </button>
@@ -41,10 +44,16 @@ export default function JyotiCatHelper() {
         .jc-wrap { position: fixed; right: 14px; bottom: 12px; z-index: 70;
           display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
         .jc-cat { pointer-events: auto; border: none; background: transparent; cursor: pointer;
-          padding: 0; width: 116px; filter: drop-shadow(0 8px 18px rgba(0,0,0,.55));
+          padding: 0; width: 112px; filter: drop-shadow(0 8px 18px rgba(0,0,0,.55));
           transition: transform .18s; position: relative; }
         .jc-cat:hover { transform: translateY(-4px) scale(1.03); }
-        .jc-cat img { width: 100%; display: block; }
+        .jc-cat img { width: 100%; display: block; position: relative; z-index: 1; }
+        /* Backing disc so the cat pops off the busy starfield. */
+        .jc-disc { position: absolute; left: 50%; bottom: 10%; transform: translateX(-50%);
+          width: 88%; aspect-ratio: 1; border-radius: 50%; z-index: 0;
+          background: radial-gradient(circle at 50% 42%, #2a184c 0%, #171030 72%, #120c22 100%);
+          border: 1.5px solid rgba(201,168,76,.45);
+          box-shadow: 0 0 24px -4px rgba(180,123,255,.55), 0 6px 16px rgba(0,0,0,.5); }
         .jc-hint { position: absolute; top: 2px; right: 6px; font-size: 12px; font-weight: 700;
           color: #0b0818; background: #f2d98a; border-radius: 999px; padding: 1px 8px;
           box-shadow: 0 2px 8px rgba(0,0,0,.4); }
@@ -55,11 +64,16 @@ export default function JyotiCatHelper() {
         .jc-bubble::after { content: ''; position: absolute; right: -7px; bottom: 20px;
           border: 7px solid transparent; border-left-color: rgba(20,16,38,.97); }
         @keyframes jcpop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-        .jc-text { margin: 0; font-size: 13px; line-height: 1.62; }
+        .jc-text { margin: 0; padding-right: 14px; font-size: 13px; line-height: 1.62; }
         .jc-next { display: block; margin-top: 7px; font-size: 10.5px; color: #c4b5fd; letter-spacing: .02em; }
+        .jc-close { position: absolute; top: 5px; right: 6px; width: 22px; height: 22px; padding: 0;
+          border: none; border-radius: 50%; cursor: pointer; line-height: 1; font-size: 12px;
+          color: #c4b5fd; background: rgba(255,255,255,.06); transition: background .15s, color .15s; }
+        .jc-close:hover { background: rgba(255,255,255,.14); color: #fff; }
         @media (max-width: 560px) {
-          .jc-cat { width: 84px; }
-          .jc-bubble { max-width: 190px; margin-bottom: 18px; }
+          .jc-cat { width: 66px; }
+          .jc-bubble { max-width: 172px; margin-bottom: 14px; }
+          .jc-wrap { right: 10px; bottom: 10px; }
         }
       `}</style>
     </div>
